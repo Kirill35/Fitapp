@@ -1,0 +1,32 @@
+# Lift Log
+
+Minimal workout tracker. Phase 1: front-end prototype only (no backend).
+
+- **Today**: the day's exercises in order, target sets × reps, what you did last time, ▶ technique link.
+- **Log**: tap an exercise, adjust the pre-filled sets with ± steppers, tick ✓, tap one difficulty. Shows today next to last time. No predictions.
+- **Settings**: Export / Import JSON. A "Prototype testing only" section lets you pick a preview date and add example history.
+
+## Run
+
+```sh
+npm install
+npm run dev          # http://localhost:5173, also on your LAN IP
+npm run build        # installable offline PWA in dist/
+npm run build:single # one self-contained HTML file in dist-single/
+```
+
+### On your iPhone over Wi-Fi
+1. Laptop and phone on the same Wi-Fi.
+2. `npm run dev` and note the `Network:` URL it prints (e.g. `http://192.168.1.23:5173`).
+3. Open that URL in Safari.
+4. To install as an app with offline support: `npm run build && npm run preview`, open the printed `Network:` URL,
+   Share → Add to Home Screen. (Offline caching needs HTTPS on a real host; on a LAN it works as a plain web app.)
+
+## Structure
+
+- `src/seed/program.json` — the program (blocks, schedule, exercises, warm-up, cardio text). Edit freely.
+  Set `"video": "https://…"` on any exercise to replace the YouTube search link.
+- `src/data/WorkoutRepository.ts` — the only interface the UI uses for data.
+- `src/data/LocalStorageRepository.ts` — current implementation (localStorage). Swap for an HTTP one later.
+- `src/domain/program.ts` — calendar (block, week, deload), targets per block, formatting.
+- `src/ui/` — Today, Log, Settings views.

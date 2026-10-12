@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Gym-floor dark: blue-black steel, chalk text, colours borrowed from bumper plates
+   (yellow 15 kg = accent, green 10 kg = done, blue 20 kg = deload, red 25 kg = hard). */
+@theme {
+  --color-bg: #101317;
+  --color-panel: #181c22;
+  --color-panel-2: #20252d;
+  --color-line: #2a3039;
+  --color-chalk: #ece7dd;
+  --color-muted: #8f97a3;
+  --color-plate: #f0b93a;
+  --color-done: #3fb27f;
+  --color-deload: #5b93f2;
+  --color-hard: #e5655b;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: "SF Pro Rounded", ui-rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-chalk);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 12px);
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-plate);
+  outline-offset: 2px;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

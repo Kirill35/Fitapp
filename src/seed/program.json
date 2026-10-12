@@ -1,0 +1,111 @@
+{
+  "start": "2026-10-13",
+  "blocks": [
+    { "id": "B1", "label": "B1", "from": "2026-10-13", "to": "2026-11-02" },
+    { "id": "D1", "label": "Deload", "from": "2026-11-03", "to": "2026-11-09", "deloadOf": "B1" },
+    { "id": "B2", "label": "B2", "from": "2026-11-10", "to": "2026-11-30" },
+    { "id": "D2", "label": "Deload", "from": "2026-12-01", "to": "2026-12-07", "deloadOf": "B2" },
+    { "id": "B3", "label": "B3", "from": "2026-12-08", "to": "2027-01-04" }
+  ],
+  "schedule": {
+    "mon": "bjj",
+    "tue": "A",
+    "wed": "bjj",
+    "thu": "cardio",
+    "fri": "bjj",
+    "sat": "B",
+    "sun": "sunday"
+  },
+  "textDays": {
+    "bjj": { "title": "BJJ", "text": { "default": "BJJ class." } },
+    "sunday": { "title": "Sunday", "text": { "default": "Optional light cardio, 40–45 min." } },
+    "cardio": {
+      "title": "Cardio",
+      "text": {
+        "B1": "10 min easy\n6 × (1 min hard / 1 min easy)\n25 min Zone 2",
+        "B2": "10 min easy\n4 × (3 min hard / 2 min easy)\n20 min Zone 2",
+        "B3": "10 min easy\n3 × 5-min rounds (30 s sprint / 30 s easy)\n20 min Zone 2",
+        "deload": "30 min Zone 2"
+      }
+    }
+  },
+  "warmup": [
+    "Bike · 2 min",
+    "Hip 90/90 · 8/side",
+    "Half-kneeling hip flexor stretch · 30 s/side",
+    "Deep squat + thoracic rotation · 5/side",
+    "Foam roller thoracic extension · 8",
+    "Spanish squat hold · 2×30–45 s",
+    "Banded lateral walks · 10 each way",
+    "Copenhagen eccentric · 2×6–8/side",
+    "Band external rotation · 1×15/arm",
+    "Face pull · 1×15",
+    "Eccentric wrist extension · 1×15/arm",
+    "Hammer pronation/supination · 1×15/arm"
+  ],
+  "exercises": {
+    "box-jump": { "name": "Box jump", "load": "none", "measure": "reps", "sets": 3, "reps": 3 },
+    "med-ball-throw": { "name": "Med ball rotational throw", "load": "none", "measure": "reps", "sets": 3, "reps": 4, "per": "side", "note": "4–6 kg ball" },
+    "zercher": { "name": "Zercher squat", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "start": 62.5,
+      "byBlock": { "B2": { "sets": 4, "reps": 3 }, "B3": { "sets": 3, "reps": 2 } } },
+    "bench": { "name": "Bench press", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "start": 85,
+      "note": "Then 4 plyo push-ups after each set",
+      "byBlock": { "B2": { "sets": 3, "reps": 4 }, "B3": { "sets": 3, "reps": 3 } } },
+    "barbell-row": { "name": "Barbell row", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "start": 82.5,
+      "byBlock": { "B2": { "sets": 3, "reps": 4 }, "B3": { "sets": 3, "reps": 3 } } },
+    "hip-thrust": { "name": "Hip thrust", "load": "kg", "measure": "reps", "sets": 2, "reps": 5, "start": 85 },
+    "knee-raise": { "name": "Hanging knee raise", "load": "none", "measure": "reps", "sets": 2, "reps": 8 },
+    "dips": { "name": "Weighted dips", "load": "added", "measure": "reps", "sets": 2, "reps": 5, "start": 25 },
+    "rev-pullups": { "name": "Reverse-grip pull-ups", "load": "added", "measure": "reps", "sets": 2, "reps": 5, "start": 10 },
+    "sandbag-shoulder": { "name": "Sandbag to shoulder", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "per": "side", "start": 30 },
+    "farmer-carry": { "name": "Farmer carry", "load": "kg", "measure": "m", "sets": 3, "reps": 30, "note": "Heavy DBs, kg per hand" },
+    "neck-lateral": { "name": "Neck lateral", "load": "none", "measure": "reps", "sets": 2, "reps": 15, "per": "side" },
+    "zone2": { "name": "Zone 2", "load": "none", "measure": "min", "sets": 1, "reps": 15 },
+
+    "jump-shrug": { "name": "Jump shrug from the hang", "load": "kg", "measure": "reps", "sets": 3, "reps": 3, "start": 40 },
+    "deadlift": { "name": "Deadlift", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "start": 110,
+      "byBlock": { "B2": { "sets": 4, "reps": 3, "note": "3 broad jumps after the last set" }, "B3": { "sets": 3, "reps": 2, "note": "3 broad jumps after the last set" } } },
+    "ohp": { "name": "Standing press (OHP)", "load": "kg", "measure": "reps", "sets": 3, "reps": 5, "start": 45,
+      "byBlock": { "B2": { "sets": 3, "reps": 4 }, "B3": { "sets": 3, "reps": 3 } } },
+    "pullups": { "name": "Pull-ups", "load": "added", "measure": "reps", "sets": 3, "reps": 5, "start": 10, "note": "Last set on towels",
+      "byBlock": { "B2": { "sets": 3, "reps": 4 }, "B3": { "sets": 3, "reps": 3 } } },
+    "bulgarian": { "name": "Bulgarian split squat", "load": "kg", "measure": "reps", "sets": 2, "reps": 5, "per": "leg", "start": 14, "note": "kg per DB" },
+    "nordic": { "name": "Nordic hamstring curl", "load": "none", "measure": "reps", "sets": 2, "reps": [4, 6] },
+    "db-row": { "name": "One-arm DB row", "load": "kg", "measure": "reps", "sets": 2, "reps": 6, "start": 40 },
+    "pallof": { "name": "Pallof press", "load": "none", "measure": "reps", "sets": 2, "reps": 10, "per": "side" },
+    "towel-hang": { "name": "Towel hang, elbows 90°", "load": "none", "measure": "sec", "sets": 2, "reps": [20, 30] },
+    "sprawl": { "name": "Sprawl", "load": "none", "measure": "reps", "sets": 2, "reps": 10 },
+    "pushup-iso": { "name": "Push-up iso hold", "load": "none", "measure": "sec", "sets": 2, "reps": [30, 40] },
+    "bearhug-carry": { "name": "Sandbag bear-hug carry", "load": "none", "measure": "m", "sets": 2, "reps": 30 },
+    "neck-flex-ext": { "name": "Neck flexion + extension", "load": "none", "measure": "reps", "sets": 2, "reps": 15 }
+  },
+  "days": {
+    "A": {
+      "title": "Day A",
+      "items": [
+        { "ex": "box-jump" },
+        { "ex": "med-ball-throw" },
+        { "ex": "zercher" },
+        { "group": "SS1", "items": ["bench", "barbell-row"] },
+        { "group": "SS2", "items": ["hip-thrust", "knee-raise"] },
+        { "group": "SS3", "items": ["dips", "rev-pullups"] },
+        { "ex": "sandbag-shoulder" },
+        { "ex": "farmer-carry" },
+        { "ex": "neck-lateral" },
+        { "ex": "zone2" }
+      ]
+    },
+    "B": {
+      "title": "Day B",
+      "items": [
+        { "ex": "jump-shrug" },
+        { "ex": "deadlift" },
+        { "group": "SS1", "items": ["ohp", "pullups"] },
+        { "group": "SS2", "items": ["bulgarian", "nordic"] },
+        { "group": "SS3", "items": ["db-row", "pallof"] },
+        { "group": "Endurance · 2 rounds", "items": ["towel-hang", "sprawl", "pushup-iso", "bearhug-carry"] },
+        { "ex": "neck-flex-ext" }
+      ]
+    }
+  }
+}
