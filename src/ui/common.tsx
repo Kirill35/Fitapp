@@ -1,47 +1,18 @@
 import { useEffect, useState } from 'react'
-import { fmtDate, type DayContext } from '../domain/program'
 import type { Difficulty } from '../domain/types'
 
-export function Header({
-  ctx,
-  title,
-  previewDate,
-  onSettings,
-}: {
-  ctx: DayContext
-  title: string
-  previewDate: string | null
-  onSettings(): void
-}) {
-  const where =
-    ctx.status === 'before'
-      ? `Program starts ${fmtDate(ctx.programStart)}`
-      : ctx.status === 'after'
-        ? 'Program complete'
-        : `${ctx.block!.deloadOf ? 'Deload' : ctx.block!.label} · Week ${ctx.weekInBlock}`
+export function BackBar({ label, title, onBack }: { label: string; title?: string; onBack(): void }) {
   return (
-    <header className="pt-safe px-4 pb-4">
-      <div className="flex items-center justify-between text-sm text-muted">
-        <span className="num">
-          {fmtDate(ctx.date)}
-          {previewDate && <span className="ml-2 rounded bg-plate/15 px-1.5 py-0.5 text-xs text-plate">preview date</span>}
-        </span>
-        <button onClick={onSettings} aria-label="Settings" className="-mr-2 grid size-10 place-items-center rounded-full text-lg">
-          ⚙︎
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h1 className="font-display text-4xl font-bold tracking-tight">{title}</h1>
-        {ctx.deload && (
-          <span className="rounded-md bg-deload px-2 py-0.5 text-xs font-bold tracking-widest text-bg">DELOAD</span>
-        )}
-      </div>
-      <div className="mt-1 text-[15px] text-muted">{where}</div>
+    <header className="pt-safe sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-bg/95 px-2 pb-2 backdrop-blur">
+      <button onClick={onBack} className="flex h-11 items-center gap-1 rounded-xl px-2 text-plate">
+        <span className="text-2xl leading-none">‹</span> {label}
+      </button>
+      {title && <span className="truncate text-sm font-semibold tracking-wider text-muted uppercase">{title}</span>}
     </header>
   )
 }
 
-export function VideoLink({ href }: { href: string }) {
+export function VideoLink({ href, small }: { href: string; small?: boolean }) {
   return (
     <a
       href={href}
@@ -49,9 +20,9 @@ export function VideoLink({ href }: { href: string }) {
       rel="noreferrer"
       onClick={(e) => e.stopPropagation()}
       aria-label="Technique video"
-      className="-mt-1 -mr-2 grid size-10 shrink-0 place-items-center rounded-full text-plate active:bg-panel-2"
+      className={`grid size-10 shrink-0 place-items-center rounded-full text-plate active:bg-panel-2 ${small ? '' : '-mt-1 -mr-2'}`}
     >
-      <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className={small ? 'size-5' : 'size-6'} aria-hidden="true">
         <circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
         <path d="M10 8.2v7.6l6-3.8z" fill="currentColor" />
       </svg>

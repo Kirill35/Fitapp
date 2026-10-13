@@ -1,4 +1,4 @@
-import type { DayId, LastPerformance, Program, Session } from '../domain/types'
+import type { DayId, Program, Session } from '../domain/types'
 
 /**
  * The only way the UI reads or writes data. Swap the implementation
@@ -6,11 +6,9 @@ import type { DayId, LastPerformance, Program, Session } from '../domain/types'
  */
 export interface WorkoutRepository {
   getProgram(): Promise<Program>
-  /** Sessions logged on a date (normally zero or one). */
-  getSessions(date: string): Promise<Session[]>
+  /** All logged sessions. Single user, a few hundred sessions a year: small enough to load at once. */
+  listSessions(): Promise<Session[]>
   saveSession(session: Session): Promise<void>
-  /** Most recent logged sets for an exercise strictly before `beforeDate`. */
-  getLastPerformance(exerciseId: string, beforeDate: string): Promise<LastPerformance | null>
   exportData(): Promise<string>
   importData(json: string): Promise<void>
   clearSessions(): Promise<void>

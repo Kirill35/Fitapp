@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { fmtDate, fmtSets, fmtTarget, targetFor, videoUrl, type DayContext } from '../domain/program'
 import type { DayItem, Difficulty, ExerciseDef, ExerciseLog, LastPerformance, Program, Session } from '../domain/types'
-import { DifficultyTag, Stepper, VideoLink } from './common'
+import { applyVoice } from '../domain/voice'
+import { BackBar, DifficultyTag, Stepper, VideoLink } from './common'
+import VoiceSheet, { MicButton } from './VoiceSheet'
 
 interface Props {
   program: Program
@@ -10,7 +12,7 @@ interface Props {
   session: Session | null
   lasts: Record<string, LastPerformance | null>
   onOpen(ids: string[]): void
-  onChange(id: string, log: ExerciseLog): void
+  onEdit(ids: string[], mutate: (ex: Record<string, ExerciseLog>) => void): void
   onBack(): void
 }
 
@@ -23,7 +25,8 @@ const DIFFICULTY: { d: Difficulty; hint: string; cls: string }[] = [
   { d: 'Hard', hint: '0–1 left', cls: 'border-hard text-hard bg-hard/15' },
 ]
 
-export default function LogView({ program, ctx, item, session, lasts, onOpen, onChange, onBack }: Props) {
+export default function LogView({ program, ctx, item, session, lasts, onOpen, onEdit, onBack }: Props) {
+  const [voice, setVoice] = useState(false)
   const ids = 'ex' in item ? [item.ex] : item.items
   const isGroup = 'group' in item
 
@@ -41,6 +44,9 @@ export default function LogView({ program, ctx, item, session, lasts, onOpen, on
     return l.sets.every((s) => s.done) && l.difficulty
   })
 
+  const onChange = (id: string, log: ExerciseLog) => onEdit([id], (ex) => (ex[id] = log))
+  const nextOpen = ids.find((id) => session.exercises[id].sets.some((s) => !s.done)) ?? ids[0]
+
   const setField = (id: string, i: number, patch: { kg?: number; value?: number; done?: boolean }) => {
     const log = session.exercises[id]
     const old = log.sets[i]
@@ -55,14 +61,7 @@ export default function LogView({ program, ctx, item, session, lasts, onOpen, on
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
-      <header className="pt-safe sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-bg/95 px-2 pb-2 backdrop-blur">
-        <button onClick={onBack} className="flex h-11 items-center gap-1 rounded-xl px-2 text-plate">
-          <span className="text-2xl leading-none">‹</span> Today
-        </button>
-        <span className="truncate text-sm font-semibold tracking-wider text-muted uppercase">
-          {isGroup ? item.group : ''}
-        </span>
-      </header>
+      <BackBar label="Day" title={isGroup ? item.group : undefined} onBack={onBack} />
 
       <main className="flex flex-col gap-5 px-4 pt-4 pb-32">
         {/* What and last time */}
@@ -184,18 +183,29 @@ export default function LogView({ program, ctx, item, session, lasts, onOpen, on
         )}
       </main>
 
-      <div className="pb-safe fixed inset-x-0 bottom-0 border-t border-line bg-bg/95 px-4 pt-3 backdrop-blur">
-        <div className="mx-auto max-w-lg">
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 px-4 pt-3 backdrop-blur">
+        <div className="mx-auto flex max-w-lg gap-2">
+          <MicButton onClick={() => setVoice(true)} />
           <button
             onClick={onBack}
-            className={`h-14 w-full rounded-2xl text-lg font-bold transition active:scale-[0.99] ${
+            className={`h-14 flex-1 rounded-2xl text-lg font-bold transition active:scale-[0.99] ${
               allDone ? 'bg-plate text-bg' : 'bg-panel-2 text-chalk'
             }`}
           >
-            {allDone ? 'Done · back to today' : 'Back to today'}
+            {allDone ? 'Done' : 'Back'}
           </button>
         </div>
       </div>
+
+      {voice && (
+        <VoiceSheet
+          program={program}
+          exerciseIds={ids}
+          fallbackId={nextOpen}
+          onApply={(id, r) => onEdit([id], (ex) => (ex[id] = applyVoice(ex[id], r)))}
+          onClose={() => setVoice(false)}
+        />
+      )}
     </div>
   )
 }

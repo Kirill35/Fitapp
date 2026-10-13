@@ -2,9 +2,11 @@
 
 Minimal workout tracker. Phase 1: front-end prototype only (no backend).
 
-- **Today**: the day's exercises in order, target sets × reps, what you did last time, ▶ technique link.
-- **Log**: tap an exercise, adjust the pre-filled sets with ± steppers, tick ✓, tap one difficulty. Shows today next to last time. No predictions.
-- **Settings**: Export / Import JSON. A "Prototype testing only" section lets you pick a preview date and add example history.
+- **Home**: block strip (tap a block to see what changes), Today card, volume (weight × reps) per week/month with a line chart, week-by-week program list with past weeks collapsed.
+- **Day**: the day's exercises in order, target sets × reps, what you did last time. Warm-up items have ▶ technique links.
+- **Log**: tap an exercise, adjust the pre-filled sets with ± steppers, tick ✓, tap one difficulty, ▶ technique link. Shows today next to last time. No predictions.
+- **Voice**: "deadlift 110 kilos 5 5 5 right" fills the sets. Without a set count ("85 kilos 5") it fills the next set. Uses the browser's speech recognition, or type/dictate with the iPhone keyboard mic.
+- **Settings**: Program summary, Export / Import JSON. A "Prototype testing only" section lets you pick a preview date and add example history.
 
 ## Run
 
@@ -13,6 +15,7 @@ npm install
 npm run dev          # http://localhost:5173, also on your LAN IP
 npm run build        # installable offline PWA in dist/
 npm run build:single # one self-contained HTML file in dist-single/
+npm test             # voice parser checks
 ```
 
 ### On your iPhone over Wi-Fi
@@ -29,4 +32,6 @@ npm run build:single # one self-contained HTML file in dist-single/
 - `src/data/WorkoutRepository.ts` — the only interface the UI uses for data.
 - `src/data/LocalStorageRepository.ts` — current implementation (localStorage). Swap for an HTTP one later.
 - `src/domain/program.ts` — calendar (block, week, deload), targets per block, formatting.
-- `src/ui/` — Today, Log, Settings views.
+- `src/domain/history.ts` — last time per exercise, volume per week/month.
+- `src/domain/voice.ts` — voice phrase parser (pure, tested in `voice.test.ts`).
+- `src/ui/` — Home, Day, Log, Voice, Settings, Program views.

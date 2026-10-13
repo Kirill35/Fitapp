@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "build:single": "vite build --mode single",
     "preview": "vite preview --host",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test": "node --experimental-strip-types --no-warnings src/domain/voice.test.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

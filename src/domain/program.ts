@@ -12,7 +12,7 @@ export function toIso(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-const daysBetween = (a: string, b: string) =>
+export const daysBetween = (a: string, b: string) =>
   Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 86_400_000)
 
 export interface DayContext {
@@ -100,6 +100,75 @@ export function fmtSets(ex: ExerciseDef, sets: SetLog[]): string {
   return sets.map((s) => `${fmtKg(ex, s.kg).replace(' kg', '')}×${s.value}`).join(' · ') + ' kg'
 }
 
-export function videoUrl(ex: ExerciseDef): string {
+export function videoUrl(ex: { name: string; video?: string }): string {
   return ex.video ?? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ex.name} technique`)}`
 }
+
+export function addDays(iso: string, n: number): string {
+  const d = parseDate(iso)
+  d.setDate(d.getDate() + n)
+  return toIso(d)
+}
+
+export function fmtShort(iso: string): string {
+  return parseDate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+export interface ProgramWeek {
+  n: number
+  from: string
+  to: string
+  block: Block
+  weekInBlock: number
+  days: { date: string; dayKey: string }[]
+}
+
+/** Program weeks (Tue–Mon) from start to the end of the last block. */
+export function programWeeks(program: Program): ProgramWeek[] {
+  const last = program.blocks[program.blocks.length - 1].to
+  const weeks: ProgramWeek[] = []
+  for (let from = program.start, n = 1; from <= last; from = addDays(from, 7), n++) {
+    const ctx = dayContext(program, from)
+    weeks.push({
+      n,
+      from,
+      to: addDays(from, 6),
+      block: ctx.block!,
+      weekInBlock: ctx.weekInBlock!,
+      days: Array.from({ length: 7 }, (_, i) => {
+        const date = addDays(from, i)
+        return { date, dayKey: dayContext(program, date).dayKey }
+      }),
+    })
+  }
+  return weeks
+}
+
+export function dayTitle(program: Program, dayKey: string): string {
+  return isGymDay(dayKey) ? program.days[dayKey].title : program.textDays[dayKey]?.title ?? dayKey
+}
+
+/** Exercises whose targets change between blocks, grouped by identical targets. */
+export function blockTargets(program: Program, blockId: string): { names: string[]; target: string; note?: string }[] {
+  const out: { names: string[]; target: string; note?: string }[] = []
+  for (const ex of Object.values(program.exercises)) {
+    if (!ex.byBlock) continue
+    const o = ex.byBlock[blockId] ?? {}
+    const target = fmtTarget(ex, { sets: o.sets ?? ex.sets, reps: o.reps ?? ex.reps })
+    const g = out.find((x) => x.target === target)
+    const name = ex.name.replace(/ \(.*\)/, '').replace('Standing press', 'OHP')
+    if (g) g.names.push(name)
+    else out.push({ names: [name], target })
+  }
+  return out
+}
+
+/** Block-specific notes, e.g. "Deadlift: 3 broad jumps after the last set". */
+export function blockNotes(program: Program, blockId: string): string[] {
+  return Object.values(program.exercises)
+    .filter((ex) => ex.byBlock?.[blockId]?.note && ex.byBlock[blockId].note !== ex.note)
+    .map((ex) => `${ex.name}: ${ex.byBlock![blockId].note}`)
+}
+
+export const dayExerciseIds = (program: Program, dayId: DayId) =>
+  program.days[dayId].items.flatMap((it) => ('ex' in it ? [it.ex] : it.items))

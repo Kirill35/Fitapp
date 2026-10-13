@@ -1,30 +1,46 @@
 import { useState } from 'react'
-import { fmtDate, fmtSets, fmtTarget, fmtKg, targetFor, textDayBody, videoUrl, type DayContext } from '../domain/program'
-import type { DayId, LastPerformance, Program, Session } from '../domain/types'
-import { DifficultyTag, Header, VideoLink } from './common'
+import { dayExerciseIds, fmtDate, fmtKg, fmtSets, fmtTarget, targetFor, textDayBody, videoUrl, type DayContext } from '../domain/program'
+import { applyVoice } from '../domain/voice'
+import type { DayId, ExerciseLog, LastPerformance, Program, Session, WarmupItem } from '../domain/types'
+import { BackBar, DifficultyTag, VideoLink } from './common'
+import VoiceSheet, { MicButton } from './VoiceSheet'
 
 interface Props {
   program: Program
   ctx: DayContext
+  isToday: boolean
   dayId: DayId | null
   isOverride: boolean
-  previewDate: string | null
   session: Session | null
   lasts: Record<string, LastPerformance | null>
+  onBack(): void
   onPickDay(d: DayId | null): void
   onOpenItem(i: number): void
+  onEdit(ids: string[], mutate: (ex: Record<string, ExerciseLog>) => void): void
   onFinish(): void
-  onSettings(): void
 }
 
-export default function TodayView(p: Props) {
+export default function DayView(p: Props) {
   const { program, ctx, dayId, session } = p
+  const [voice, setVoice] = useState(false)
   const title = dayId ? program.days[dayId].title : program.textDays[ctx.dayKey].title
   const doneSets = session ? Object.values(session.exercises).some((l) => l.sets.some((s) => s.done)) : false
+  const where = ctx.block ? `${ctx.block.deloadOf ? 'Deload' : ctx.block.label} · Week ${ctx.weekInBlock}` : 'Outside the program'
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
-      <Header ctx={p.ctx} title={title} previewDate={p.previewDate} onSettings={p.onSettings} />
+      <BackBar label="Home" onBack={p.onBack} />
+      <header className="px-4 pt-2 pb-4">
+        <div className="num text-sm text-muted">
+          {fmtDate(ctx.date)}
+          {p.isToday && <span className="ml-2 rounded bg-plate/15 px-1.5 py-0.5 text-xs font-semibold text-plate">TODAY</span>}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="font-display text-4xl font-bold tracking-tight">{title}</h1>
+          {ctx.deload && <span className="rounded-md bg-deload px-2 py-0.5 text-xs font-bold tracking-widest text-bg">DELOAD</span>}
+        </div>
+        <div className="mt-1 text-[15px] text-muted">{where}</div>
+      </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 pb-32">
         {!dayId && <TextDay program={program} ctx={ctx} onPickDay={p.onPickDay} />}
@@ -39,16 +55,12 @@ export default function TodayView(p: Props) {
             <Warmup items={program.warmup} />
             {program.days[dayId].items.map((item, i) => {
               const ids = 'ex' in item ? [item.ex] : item.items
-              const allDone =
-                !!session && ids.every((id) => session.exercises[id]?.sets.some((s) => s.done))
+              const allDone = !!session && ids.every((id) => session.exercises[id]?.sets.some((s) => s.done))
               return (
-                <div
+                <button
                   key={i}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => p.onOpenItem(i)}
-                  onKeyDown={(e) => e.key === 'Enter' && p.onOpenItem(i)}
-                  className={`w-full cursor-pointer rounded-2xl border bg-panel text-left transition active:scale-[0.99] ${
+                  className={`w-full rounded-2xl border bg-panel text-left transition active:scale-[0.99] ${
                     allDone ? 'border-done/50' : 'border-line'
                   }`}
                 >
@@ -71,7 +83,7 @@ export default function TodayView(p: Props) {
                       />
                     ))}
                   </div>
-                </div>
+                </button>
               )
             })}
           </>
@@ -79,24 +91,33 @@ export default function TodayView(p: Props) {
       </main>
 
       {dayId && (
-        <div className="pb-safe fixed inset-x-0 bottom-0 border-t border-line bg-bg/95 px-4 pt-3 backdrop-blur">
-          <div className="mx-auto max-w-lg">
+        <div className="pb-safe fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 px-4 pt-3 backdrop-blur">
+          <div className="mx-auto flex max-w-lg gap-2">
+            <MicButton onClick={() => setVoice(true)} />
             {session?.status === 'done' ? (
-              <div className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-done/15 font-semibold text-done">
+              <div className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-done/15 font-semibold text-done">
                 ✓ Workout saved
-                <span className="text-sm font-normal text-muted">· edits save automatically</span>
               </div>
             ) : (
               <button
                 disabled={!doneSets}
                 onClick={p.onFinish}
-                className="h-14 w-full rounded-2xl bg-plate text-lg font-bold text-bg transition active:scale-[0.99] disabled:bg-panel-2 disabled:text-muted"
+                className="h-14 flex-1 rounded-2xl bg-plate text-lg font-bold text-bg transition active:scale-[0.99] disabled:bg-panel-2 disabled:text-muted"
               >
                 Finish workout
               </button>
             )}
           </div>
         </div>
+      )}
+
+      {voice && dayId && (
+        <VoiceSheet
+          program={program}
+          exerciseIds={dayExerciseIds(program, dayId)}
+          onApply={(id, r) => p.onEdit([id], (ex) => (ex[id] = applyVoice(ex[id], r)))}
+          onClose={() => setVoice(false)}
+        />
       )}
     </div>
   )
@@ -137,10 +158,9 @@ function ExerciseRow({
           </div>
           {t.note && <div className="text-sm text-muted">{t.note}</div>}
         </div>
-        <VideoLink href={videoUrl(ex)} />
       </div>
 
-      <dl className={`grid grid-cols-[3.5rem_1fr] gap-x-2 gap-y-1 text-sm ${letter ? 'pl-9' : ''}`}>
+      <dl className={`grid grid-cols-[3rem_1fr] gap-x-2 gap-y-1 text-sm ${letter ? 'pl-9' : ''}`}>
         <dt className="text-muted">Last</dt>
         <dd className="num min-w-0">
           {last ? (
@@ -148,9 +168,7 @@ function ExerciseRow({
               {fmtDate(last.date)} · {fmtSets(ex, last.sets)} <DifficultyTag d={last.difficulty} />
             </>
           ) : (
-            <span className="text-muted">
-              No log yet{ex.start !== undefined ? ` · program start ${fmtKg(ex, ex.start)}` : ''}
-            </span>
+            <span className="text-muted">No log yet{ex.start !== undefined ? ` · program start ${fmtKg(ex, ex.start)}` : ''}</span>
           )}
         </dd>
         {todayDone.length > 0 && (
@@ -166,7 +184,7 @@ function ExerciseRow({
   )
 }
 
-function Warmup({ items }: { items: string[] }) {
+function Warmup({ items }: { items: WarmupItem[] }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="rounded-2xl border border-line bg-panel">
@@ -177,16 +195,14 @@ function Warmup({ items }: { items: string[] }) {
         <span className={`text-muted transition ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
       {open && (
-        <ol className="flex flex-col gap-2 border-t border-line px-4 py-3 text-[15px]">
-          {items.map((w) => {
-            const [name, dose] = w.split(' · ')
-            return (
-              <li key={w} className="flex justify-between gap-3">
-                <span>{name}</span>
-                <span className="num shrink-0 text-muted">{dose}</span>
-              </li>
-            )
-          })}
+        <ol className="divide-y divide-line border-t border-line text-[15px]">
+          {items.map((w) => (
+            <li key={w.name} className="flex items-center gap-3 py-1 pr-3 pl-4">
+              <span className="min-w-0 flex-1">{w.name}</span>
+              <span className="num shrink-0 text-muted">{w.dose}</span>
+              <VideoLink href={videoUrl(w)} small />
+            </li>
+          ))}
         </ol>
       )}
     </div>

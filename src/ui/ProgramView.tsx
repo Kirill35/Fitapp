@@ -1,0 +1,131 @@
+import { dayTitle, fmtReps, fmtShort, fmtTarget } from '../domain/program'
+import type { Program } from '../domain/types'
+import { BackBar } from './common'
+
+const ORDER = ['tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'mon']
+const DAY = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' } as Record<string, string>
+
+/** One-screen summary of the whole program. */
+export default function ProgramView({ program, onBack }: { program: Program; onBack(): void }) {
+  const mainBlocks = program.blocks.filter((b) => !b.deloadOf)
+  const main = Object.values(program.exercises).filter((ex) => ex.byBlock)
+  const cardio = program.textDays.cardio?.text ?? {}
+  const h2 = 'mb-2 text-xs font-semibold tracking-wider text-muted uppercase'
+
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
+      <BackBar label="Settings" onBack={onBack} />
+      <main className="flex flex-col gap-7 px-4 pt-3 pb-12 text-[15px]">
+        <h1 className="font-display text-3xl font-bold">Program</h1>
+
+        <section>
+          <h2 className={h2}>Every week (Tue–Mon)</h2>
+          <ul className="grid grid-cols-[3rem_1fr] gap-y-1">
+            {ORDER.map((d) => (
+              <li key={d} className="contents">
+                <span className="text-muted">{DAY[d]}</span>
+                <span className={['A', 'B'].includes(program.schedule[d]) ? 'font-semibold' : ''}>{dayTitle(program, program.schedule[d])}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section>
+          <h2 className={h2}>Blocks</h2>
+          <ul className="flex flex-col gap-1">
+            {program.blocks.map((b) => (
+              <li key={b.id} className="flex justify-between gap-3">
+                <span className={b.deloadOf ? 'text-deload' : 'font-semibold'}>{b.deloadOf ? 'Deload' : b.label}</span>
+                <span className="num text-muted">
+                  {fmtShort(b.from)} – {fmtShort(b.to)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section>
+          <h2 className={h2}>What changes per block</h2>
+          <div className="overflow-x-auto rounded-2xl border border-line">
+            <table className="num w-full text-left text-sm">
+              <thead className="bg-panel text-muted">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Main lift</th>
+                  {mainBlocks.map((b) => (
+                    <th key={b.id} className="px-2 py-2 text-right font-medium">
+                      {b.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {main.map((ex) => (
+                  <tr key={ex.name}>
+                    <td className="px-3 py-2">{ex.name.replace(' (OHP)', '')}</td>
+                    {mainBlocks.map((b) => {
+                      const o = ex.byBlock?.[b.id] ?? {}
+                      return (
+                        <td key={b.id} className="px-2 py-2 text-right font-semibold text-plate">
+                          {o.sets ?? ex.sets}×{fmtReps(o.reps ?? ex.reps)}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul className="mt-3 flex flex-col gap-1 text-muted">
+            <li>Deadlift in B2–B3: 3 broad jumps after the last set.</li>
+            <li>Everything else: same targets in every block.</li>
+            <li>Deload weeks: 2 sets, same weight, previous block's reps.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className={h2}>Thursday cardio</h2>
+          <ul className="flex flex-col gap-2">
+            {[...mainBlocks.map((b) => [b.label, cardio[b.id]]), ['Deload', cardio.deload]].map(([k, v]) => (
+              <li key={k} className="grid grid-cols-[3.5rem_1fr]">
+                <span className="font-semibold">{k}</span>
+                <span className="text-muted">{v?.replace(/\n/g, ' → ')}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {(['A', 'B'] as const).map((d) => (
+          <section key={d}>
+            <h2 className={h2}>
+              {program.days[d].title} · {DAY[ORDER.find((x) => program.schedule[x] === d)!]} · B1 targets
+            </h2>
+            <ul className="flex flex-col gap-1">
+              {program.days[d].items.map((it, i) => {
+                const ids = 'ex' in it ? [it.ex] : it.items
+                return (
+                  <li key={i} className="flex gap-2">
+                    <span className="w-9 shrink-0 text-xs leading-6 font-semibold text-muted">{'group' in it ? it.group.split(' ')[0].replace('Endurance', 'End.') : ''}</span>
+                    <span className="min-w-0">
+                      {ids
+                        .map((id) => {
+                          const ex = program.exercises[id]
+                          const w = ex.start !== undefined ? ` @${ex.load === 'added' ? '+' : ''}${ex.start}` : ''
+                          return `${ex.name} ${fmtTarget(ex, ex)}${w}`
+                        })
+                        .join(' · ')}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        ))}
+
+        <section>
+          <h2 className={h2}>Warm-up (Tue & Sat)</h2>
+          <p className="text-muted">{program.warmup.map((w) => `${w.name} ${w.dose}`).join(' · ')}</p>
+        </section>
+      </main>
+    </div>
+  )
+}

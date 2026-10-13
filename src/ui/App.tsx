@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WorkoutRepository } from '../data/WorkoutRepository'
 import { sessionId } from '../data/WorkoutRepository'
-import { dayContext, isGymDay, targetFor, toIso } from '../domain/program'
+import { lastPerformance } from '../domain/history'
+import { dayContext, dayExerciseIds, isGymDay, targetFor, toIso } from '../domain/program'
 import type { DayId, ExerciseLog, LastPerformance, Program, Session } from '../domain/types'
-import TodayView from './TodayView'
+import HomeView from './HomeView'
+import DayView from './DayView'
 import LogView from './LogView'
 import SettingsView from './SettingsView'
+import ProgramView from './ProgramView'
 
 const PREVIEW_KEY = 'liftlog.previewDate'
 
@@ -17,84 +20,71 @@ function readPreview(): string | null {
   }
 }
 
-type View = { name: 'today' } | { name: 'log'; item: number } | { name: 'settings' }
+type View =
+  | { name: 'home' }
+  | { name: 'day'; date: string }
+  | { name: 'log'; date: string; item: number }
+  | { name: 'settings' }
+  | { name: 'program' }
 
 export default function App({ repo }: { repo: WorkoutRepository }) {
   const [program, setProgram] = useState<Program | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
   const [previewDate, setPreviewDateState] = useState<string | null>(readPreview)
-  const date = previewDate ?? toIso(new Date())
-  const [session, setSession] = useState<Session | null>(null)
-  const [override, setOverride] = useState<DayId | null>(null)
-  const [lasts, setLasts] = useState<Record<string, LastPerformance | null>>({})
-  const [view, setView] = useState<View>({ name: 'today' })
-  const [reloadKey, setReloadKey] = useState(0)
+  const today = previewDate ?? toIso(new Date())
+  const [overrides, setOverrides] = useState<Record<string, DayId>>({})
+  const [view, setViewState] = useState<View>({ name: 'home' })
 
+  const setView = (v: View) => {
+    setViewState(v)
+    window.scrollTo(0, 0)
+  }
+
+  const reload = useCallback(() => repo.listSessions().then(setSessions), [repo])
   useEffect(() => {
     repo.getProgram().then(setProgram)
-  }, [repo])
+    reload()
+  }, [repo, reload])
 
-  const ctx = useMemo(() => (program ? dayContext(program, date) : null), [program, date])
+  const sessionFor = (date: string) => sessions.find((s) => s.date === date) ?? null
+  const dayIdFor = (date: string): DayId | null => {
+    if (!program) return null
+    const key = dayContext(program, date).dayKey
+    return sessionFor(date)?.dayId ?? overrides[date] ?? (isGymDay(key) ? key : null)
+  }
 
-  // Load whatever was logged for this date; it decides the day if the user switched days.
-  useEffect(() => {
-    if (!program) return
-    let live = true
-    repo.getSessions(date).then((list) => {
-      if (!live) return
-      const s = list[0] ?? null
-      setSession(s)
-      setOverride(s && s.dayId !== program.schedule[dayContext(program, date).weekday] ? s.dayId : null)
-    })
-    return () => {
-      live = false
-    }
-  }, [repo, program, date, reloadKey])
+  const date = view.name === 'day' || view.name === 'log' ? view.date : today
+  const dayId = dayIdFor(date)
+  const lasts = useMemo(() => {
+    const out: Record<string, LastPerformance | null> = {}
+    if (program && dayId) for (const id of dayExerciseIds(program, dayId)) out[id] = lastPerformance(sessions, id, date)
+    return out
+  }, [program, dayId, sessions, date])
 
-  const dayId: DayId | null = override ?? (ctx && isGymDay(ctx.dayKey) ? ctx.dayKey : null)
-
-  useEffect(() => {
-    if (!program || !dayId) return
-    let live = true
-    const ids = program.days[dayId].items.flatMap((it) => ('ex' in it ? [it.ex] : it.items))
-    Promise.all(ids.map((id) => repo.getLastPerformance(id, date))).then((res) => {
-      if (live) setLasts(Object.fromEntries(ids.map((id, i) => [id, res[i]])))
-    })
-    return () => {
-      live = false
-    }
-  }, [repo, program, dayId, date, reloadKey])
-
-  const persist = useCallback(
-    (next: Session) => {
-      setSession(next)
-      void repo.saveSession(next)
-    },
-    [repo],
-  )
-
-  /** Create logs pre-filled from last time (weight) and today's target (reps). */
-  const ensureLogs = useCallback(
-    (ids: string[]) => {
-      if (!program || !ctx || !dayId) return
-      const base: Session =
-        session && session.dayId === dayId
-          ? session
-          : {
-              id: sessionId(date, dayId),
-              date,
-              dayId,
-              blockId: ctx.block?.id ?? null,
-              status: 'in-progress',
-              exercises: {},
-              updatedAt: '',
-            }
-      const missing = ids.filter((id) => !base.exercises[id])
-      if (missing.length === 0 && base === session) return
+  /** Make sure logs exist for `ids` (pre-filled from last time and today's target), then apply `mutate`. */
+  const editSession = useCallback(
+    (date: string, ids: string[], mutate?: (ex: Record<string, ExerciseLog>) => void) => {
+      if (!program) return
+      const dId = dayIdFor(date)
+      if (!dId) return
+      const ctx = dayContext(program, date)
+      const existing = sessions.find((s) => s.date === date && s.dayId === dId)
+      const base: Session = existing ?? {
+        id: sessionId(date, dId),
+        date,
+        dayId: dId,
+        blockId: ctx.block?.id ?? null,
+        status: 'in-progress',
+        exercises: {},
+        updatedAt: '',
+      }
       const exercises = { ...base.exercises }
-      for (const id of missing) {
+      let changed = false
+      for (const id of ids) {
+        if (exercises[id]) continue
         const ex = program.exercises[id]
         const t = targetFor(ex, ctx, program)
-        const last = lasts[id]
+        const last = lastPerformance(sessions, id, date)
         const reps = Array.isArray(t.reps) ? t.reps[0] : t.reps
         exercises[id] = {
           sets: Array.from({ length: t.sets }, (_, i) => ({
@@ -103,19 +93,28 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
             done: false,
           })),
         }
+        changed = true
       }
-      persist({ ...base, exercises })
+      if (mutate) {
+        mutate(exercises)
+        changed = true
+      }
+      if (!changed) return
+      const next = { ...base, exercises, updatedAt: new Date().toISOString() }
+      setSessions((all) => [...all.filter((s) => s.id !== next.id), next])
+      void repo.saveSession(next)
     },
-    [program, ctx, dayId, session, date, lasts, persist],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [program, sessions, overrides, repo],
   )
 
-  const updateLog = useCallback(
-    (id: string, log: ExerciseLog) => {
-      if (!session) return
-      persist({ ...session, exercises: { ...session.exercises, [id]: log } })
-    },
-    [session, persist],
-  )
+  const finish = (date: string) => {
+    const s = sessionFor(date)
+    if (!s) return
+    const next: Session = { ...s, status: 'done', updatedAt: new Date().toISOString() }
+    setSessions((all) => all.map((x) => (x.id === s.id ? next : x)))
+    void repo.saveSession(next)
+  }
 
   const setPreviewDate = (d: string | null) => {
     try {
@@ -125,52 +124,74 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
       /* preview date just won't survive a reload */
     }
     setPreviewDateState(d)
-    setOverride(null)
-    setSession(null)
+    setOverrides({})
   }
 
-  if (!program || !ctx) return null
+  if (!program) return null
 
-  if (view.name === 'settings') {
-    return (
-      <SettingsView
-        repo={repo}
-        program={program}
-        previewDate={previewDate}
-        onPreviewDate={setPreviewDate}
-        onDataChanged={() => setReloadKey((k) => k + 1)}
-        onBack={() => setView({ name: 'today' })}
-      />
-    )
-  }
-
-  if (view.name === 'log' && dayId) {
-    return (
-      <LogView
-        program={program}
-        ctx={ctx}
-        item={program.days[dayId].items[view.item]}
-        session={session}
-        lasts={lasts}
-        onOpen={ensureLogs}
-        onChange={updateLog}
-        onBack={() => setView({ name: 'today' })}
-      />
-    )
+  switch (view.name) {
+    case 'settings':
+      return (
+        <SettingsView
+          repo={repo}
+          program={program}
+          today={today}
+          previewDate={previewDate}
+          onPreviewDate={setPreviewDate}
+          onDataChanged={reload}
+          onProgram={() => setView({ name: 'program' })}
+          onBack={() => setView({ name: 'home' })}
+        />
+      )
+    case 'program':
+      return <ProgramView program={program} onBack={() => setView({ name: 'settings' })} />
+    case 'log':
+      if (!dayId) break
+      return (
+        <LogView
+          program={program}
+          ctx={dayContext(program, view.date)}
+          item={program.days[dayId].items[view.item]}
+          session={sessionFor(view.date)}
+          lasts={lasts}
+          onOpen={(ids) => editSession(view.date, ids)}
+          onEdit={(ids, mutate) => editSession(view.date, ids, mutate)}
+          onBack={() => setView({ name: 'day', date: view.date })}
+        />
+      )
+    case 'day':
+      return (
+        <DayView
+          program={program}
+          ctx={dayContext(program, view.date)}
+          isToday={view.date === today}
+          dayId={dayId}
+          isOverride={!!overrides[view.date] && !sessionFor(view.date)}
+          session={sessionFor(view.date)?.dayId === dayId ? sessionFor(view.date) : null}
+          lasts={lasts}
+          onBack={() => setView({ name: 'home' })}
+          onPickDay={(d) =>
+            setOverrides((o) => {
+              const n = { ...o }
+              if (d) n[view.date] = d
+              else delete n[view.date]
+              return n
+            })
+          }
+          onOpenItem={(i) => setView({ name: 'log', date: view.date, item: i })}
+          onEdit={(ids, mutate) => editSession(view.date, ids, mutate)}
+          onFinish={() => finish(view.date)}
+        />
+      )
   }
 
   return (
-    <TodayView
+    <HomeView
       program={program}
-      ctx={ctx}
-      dayId={dayId}
-      isOverride={!!override}
+      today={today}
       previewDate={previewDate}
-      session={session && session.dayId === dayId ? session : null}
-      lasts={lasts}
-      onPickDay={(d) => setOverride(d)}
-      onOpenItem={(i) => setView({ name: 'log', item: i })}
-      onFinish={() => session && persist({ ...session, status: 'done' })}
+      sessions={sessions}
+      onOpenDay={(d) => setView({ name: 'day', date: d })}
       onSettings={() => setView({ name: 'settings' })}
     />
   )

@@ -1,5 +1,5 @@
 import seed from '../seed/program.json'
-import type { LastPerformance, Program, Session } from '../domain/types'
+import type { Program, Session } from '../domain/types'
 import type { WorkoutRepository } from './WorkoutRepository'
 
 const KEY = 'liftlog.sessions.v1'
@@ -30,26 +30,14 @@ export class LocalStorageRepository implements WorkoutRepository {
     return seed as unknown as Program
   }
 
-  async getSessions(date: string): Promise<Session[]> {
-    return Object.values(load()).filter((s) => s.date === date)
+  async listSessions(): Promise<Session[]> {
+    return Object.values(load())
   }
 
   async saveSession(session: Session): Promise<void> {
     const all = load()
     all[session.id] = { ...session, updatedAt: new Date().toISOString() }
     store(all)
-  }
-
-  async getLastPerformance(exerciseId: string, beforeDate: string): Promise<LastPerformance | null> {
-    const sessions = Object.values(load())
-      .filter((s) => s.date < beforeDate)
-      .sort((a, b) => (a.date < b.date ? 1 : -1))
-    for (const s of sessions) {
-      const log = s.exercises[exerciseId]
-      const done = log?.sets.filter((x) => x.done) ?? []
-      if (done.length) return { date: s.date, sets: done, difficulty: log.difficulty }
-    }
-    return null
   }
 
   async exportData(): Promise<string> {

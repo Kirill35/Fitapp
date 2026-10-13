@@ -1,18 +1,21 @@
 import { useState } from 'react'
 import type { WorkoutRepository } from '../data/WorkoutRepository'
 import { demoSessions } from '../data/demo'
+import { BackBar } from './common'
 import type { Program } from '../domain/types'
 
 interface Props {
   repo: WorkoutRepository
   program: Program
+  today: string
   previewDate: string | null
   onPreviewDate(d: string | null): void
   onDataChanged(): void
+  onProgram(): void
   onBack(): void
 }
 
-export default function SettingsView({ repo, program, previewDate, onPreviewDate, onDataChanged, onBack }: Props) {
+export default function SettingsView({ repo, program, today, previewDate, onPreviewDate, onDataChanged, onProgram, onBack }: Props) {
   const [exported, setExported] = useState<string | null>(null)
   const [importText, setImportText] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
@@ -51,14 +54,17 @@ export default function SettingsView({ repo, program, previewDate, onPreviewDate
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
-      <header className="pt-safe flex items-center gap-2 border-b border-line px-2 pb-2">
-        <button onClick={onBack} className="flex h-11 items-center gap-1 rounded-xl px-2 text-plate">
-          <span className="text-2xl leading-none">‹</span> Today
-        </button>
-        <span className="font-semibold">Settings</span>
-      </header>
+      <BackBar label="Home" title="Settings" onBack={onBack} />
 
       <main className="flex flex-col gap-8 px-4 py-5">
+        <button onClick={onProgram} className="flex items-center justify-between rounded-2xl border border-line bg-panel px-4 py-4 text-left">
+          <span>
+            <span className="block font-semibold">Program summary</span>
+            <span className="text-sm text-muted">Schedule, blocks, what changes, cardio</span>
+          </span>
+          <span className="text-2xl text-muted">›</span>
+        </button>
+
         <section className="flex flex-col gap-3">
           <h2 className="text-xs font-semibold tracking-wider text-muted uppercase">Backup</h2>
           <button onClick={doExport} className={`${btn} bg-plate text-bg`}>
@@ -134,22 +140,23 @@ export default function SettingsView({ repo, program, previewDate, onPreviewDate
           </label>
           <div className="flex flex-wrap gap-2 text-sm">
             {[
-              ['2026-10-13', 'Tue · Day A'],
-              ['2026-10-17', 'Sat · Day B'],
-              ['2026-10-15', 'Thu · Cardio'],
-              ['2026-11-07', 'Deload Sat'],
-              ['2026-11-14', 'B2 Sat'],
+              ['2026-10-13', 'Tue 13 Oct · Day A'],
+              ['2026-10-15', 'Thu 15 Oct · Cardio'],
+              ['2026-11-07', 'Sat 7 Nov · Deload'],
+              ['2026-11-21', 'Sat 21 Nov · B2'],
+              ['2026-12-15', 'Tue 15 Dec · B3'],
             ].map(([d, l]) => (
               <button key={d} onClick={() => onPreviewDate(d)} className="rounded-lg border border-line px-3 py-2">
                 {l}
               </button>
             ))}
           </div>
+          <p className="text-xs text-muted">Tip: pick a later date first, then add example history to fill the weeks before it.</p>
           <button
             onClick={async () => {
-              await repo.importData(JSON.stringify(demoSessions(program)))
+              await repo.importData(JSON.stringify(demoSessions(program, today)))
               onDataChanged()
-              flash('Example history added: Tue 6 Oct and Sat 10 Oct.')
+              flash('Example history added up to yesterday.')
             }}
             className={`${btn} bg-panel-2`}
           >

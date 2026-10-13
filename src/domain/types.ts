@@ -20,6 +20,8 @@ export interface ExerciseDef extends Target {
   start?: number
   /** Optional own technique URL; otherwise a YouTube search link is used. */
   video?: string
+  /** Words that identify the exercise in voice input. */
+  aliases?: string[]
   byBlock?: Record<string, Partial<Target>>
 }
 
@@ -34,12 +36,18 @@ export interface Block {
   deloadOf?: string
 }
 
+export interface WarmupItem {
+  name: string
+  dose: string
+  video?: string
+}
+
 export interface Program {
   start: string
   blocks: Block[]
   schedule: Record<string, string>
   textDays: Record<string, { title: string; text: Record<string, string> }>
-  warmup: string[]
+  warmup: WarmupItem[]
   exercises: Record<string, ExerciseDef>
   days: Record<DayId, { title: string; items: DayItem[] }>
 }
