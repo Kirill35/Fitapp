@@ -33,5 +33,7 @@ export default defineConfig(({ mode }) => ({
           workbox: { globPatterns: ['**/*.{js,css,html,svg,png}'] },
         }),
   ],
+  // `npm run dev` + `npm run dev:api`: the app talks to the local Worker on the same origin.
+  server: { proxy: { '/api': 'http://localhost:8787' } },
   build: mode === 'single' ? { outDir: 'dist-single' } : {},
 }))

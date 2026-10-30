@@ -8,15 +8,20 @@
     "build": "tsc -b && vite build",
     "build:single": "vite build --mode single",
     "preview": "vite preview --host",
-    "typecheck": "tsc -b",
-    "test": "vitest run"
+    "typecheck": "tsc -b && tsc -p worker/tsconfig.json",
+    "test": "vitest run",
+    "dev:api": "wrangler dev --local --port 8787",
+    "db:migrate:local": "wrangler d1 migrations apply lift-log --local",
+    "smoke": "node scripts/smoke-api.mjs"
   },
   "dependencies": {
+    "hono": "^4.13.14",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261030.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -26,6 +31,7 @@
     "vite": "^8.3.4",
     "vite-plugin-pwa": "^2.0.0",
     "vite-plugin-singlefile": "^2.3.3",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
   }
 }

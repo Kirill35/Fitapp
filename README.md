@@ -15,7 +15,7 @@ npm install
 npm run dev          # http://localhost:5173, also on your LAN IP
 npm run build        # installable offline PWA in dist/
 npm run build:single # one self-contained HTML file in dist-single/
-npm test             # unit tests (calendar, targets, volume, voice)
+npm test             # unit tests (calendar, targets, volume, voice, schema, API)
 ```
 
 ### On your iPhone over Wi-Fi
@@ -37,3 +37,15 @@ npm test             # unit tests (calendar, targets, volume, voice)
 - `src/ui/` — Home, Day, Log, Voice, Settings, Program views.
 
 See `docs/DESIGN.md` for the backend and sync design.
+
+## Backend (local)
+
+```sh
+echo "API_TOKEN=local-dev-token" > .dev.vars     # git-ignored
+npm run db:migrate:local                          # creates the local D1 database
+npm run build && npm run dev:api                  # Worker + built app on http://localhost:8787
+API_TOKEN=local-dev-token npm run smoke -- http://localhost:8787 --write
+```
+
+For UI work, run `npm run dev` (port 5173) next to `npm run dev:api`; Vite proxies `/api` to the Worker.
+API tests (`worker/api.test.ts`) run against an in-memory SQLite that mimics D1, so they need no Cloudflare account.
