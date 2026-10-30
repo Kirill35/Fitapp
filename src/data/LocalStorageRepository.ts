@@ -1,4 +1,5 @@
 import seed from '../seed/program.json'
+import { checkProgram } from '../../shared/schema'
 import type { Program, Session } from '../domain/types'
 import type { WorkoutRepository } from './WorkoutRepository'
 
@@ -27,7 +28,9 @@ function store(all: Record<string, Session>) {
 
 export class LocalStorageRepository implements WorkoutRepository {
   async getProgram(): Promise<Program> {
-    return seed as unknown as Program
+    const r = checkProgram(seed)
+    if (!r.ok) throw new Error(`Program is invalid:\n${r.errors.join('\n')}`)
+    return r.program
   }
 
   async listSessions(): Promise<Session[]> {

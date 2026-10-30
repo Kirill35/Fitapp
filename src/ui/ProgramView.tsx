@@ -1,4 +1,4 @@
-import { dayTitle, fmtReps, fmtShort, fmtTarget } from '../domain/program'
+import { dayTitle, fmtReps, fmtShort, fmtTarget, isGymDay, textDaysByBlock } from '../domain/program'
 import type { Program } from '../domain/types'
 import { BackBar } from './common'
 
@@ -9,7 +9,7 @@ const DAY = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: '
 export default function ProgramView({ program, onBack }: { program: Program; onBack(): void }) {
   const mainBlocks = program.blocks.filter((b) => !b.deloadOf)
   const main = Object.values(program.exercises).filter((ex) => ex.byBlock)
-  const cardio = program.textDays.cardio?.text ?? {}
+  const sched = program.schedule as Record<string, string>
   const h2 = 'mb-2 text-xs font-semibold tracking-wider text-muted uppercase'
 
   return (
@@ -24,7 +24,7 @@ export default function ProgramView({ program, onBack }: { program: Program; onB
             {ORDER.map((d) => (
               <li key={d} className="contents">
                 <span className="text-muted">{DAY[d]}</span>
-                <span className={['A', 'B'].includes(program.schedule[d]) ? 'font-semibold' : ''}>{dayTitle(program, program.schedule[d])}</span>
+                <span className={isGymDay(program, sched[d]) ? 'font-semibold' : ''}>{dayTitle(program, sched[d])}</span>
               </li>
             ))}
           </ul>
@@ -82,22 +82,24 @@ export default function ProgramView({ program, onBack }: { program: Program; onB
           </ul>
         </section>
 
-        <section>
-          <h2 className={h2}>Thursday cardio</h2>
-          <ul className="flex flex-col gap-2">
-            {[...mainBlocks.map((b) => [b.label, cardio[b.id]]), ['Deload', cardio.deload]].map(([k, v]) => (
-              <li key={k} className="grid grid-cols-[3.5rem_1fr]">
-                <span className="font-semibold">{k}</span>
-                <span className="text-muted">{v?.replace(/\n/g, ' → ')}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {textDaysByBlock(program).map((td) => (
+          <section key={td.title}>
+            <h2 className={h2}>{td.title} by block</h2>
+            <ul className="flex flex-col gap-2">
+              {td.rows.map((r) => (
+                <li key={r.label} className="grid grid-cols-[3.5rem_1fr]">
+                  <span className="font-semibold">{r.label}</span>
+                  <span className="text-muted">{r.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
-        {(['A', 'B'] as const).map((d) => (
+        {Object.keys(program.days).map((d) => (
           <section key={d}>
             <h2 className={h2}>
-              {program.days[d].title} · {DAY[ORDER.find((x) => program.schedule[x] === d)!]} · B1 targets
+              {program.days[d].title} · {ORDER.filter((x) => sched[x] === d).map((x) => DAY[x]).join(', ')} · {mainBlocks[0]?.label} targets
             </h2>
             <ul className="flex flex-col gap-1">
               {program.days[d].items.map((it, i) => {
@@ -122,7 +124,7 @@ export default function ProgramView({ program, onBack }: { program: Program; onB
         ))}
 
         <section>
-          <h2 className={h2}>Warm-up (Tue & Sat)</h2>
+          <h2 className={h2}>Warm-up </h2>
           <p className="text-muted">{program.warmup.map((w) => `${w.name} ${w.dose}`).join(' · ')}</p>
         </section>
       </main>

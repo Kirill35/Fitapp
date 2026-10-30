@@ -7,13 +7,14 @@ import { sessionId } from './WorkoutRepository'
  * then every gym day up to (not including) `today`, with weights creeping up week by week.
  */
 export function demoSessions(program: Program, today: string): Session[] {
+  const gymDays = Object.keys(program.days)
   const plan: [string, DayId][] = [
-    ['2026-10-06', 'A'],
-    ['2026-10-10', 'B'],
+    [addDays(program.start, -7), gymDays[0]],
+    [addDays(program.start, -3), gymDays[1] ?? gymDays[0]],
   ]
   for (let d = program.start; d < today; d = addDays(d, 1)) {
     const key = dayContext(program, d).dayKey
-    if (isGymDay(key)) plan.push([d, key])
+    if (isGymDay(program, key)) plan.push([d, key])
   }
   const moods: Difficulty[] = ['Right', 'Easy', 'Right', 'Hard']
   return plan.map(([date, dayId], si) => {

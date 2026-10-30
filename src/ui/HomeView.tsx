@@ -3,6 +3,7 @@ import { countsForVolume, fmtVolume, monthPace, sessionVolume, volumeByMonth, vo
 import {
   addDays,
   blockNotes,
+  blockTextDays,
   blockTargets,
   dayContext,
   dayExerciseIds,
@@ -122,7 +123,7 @@ function BlockStrip({ program, weeks, today }: { program: Program; weeks: Progra
 }
 
 export function BlockDetails({ program, block }: { program: Program; block: Block }) {
-  const cardio = program.textDays.cardio?.text
+  const textDays = blockTextDays(program, block)
   const weeks = Math.round((parseDate(block.to).getTime() - parseDate(block.from).getTime()) / 86_400_000 + 1) / 7
   return (
     <div className="rounded-2xl border border-line bg-panel px-4 py-3 text-[15px]">
@@ -135,7 +136,11 @@ export function BlockDetails({ program, block }: { program: Program; block: Bloc
       {block.deloadOf ? (
         <ul className="flex flex-col gap-1">
           <li>2 sets of every exercise, same weight, {block.deloadOf} reps.</li>
-          {cardio?.deload && <li className="text-muted">Cardio: {cardio.deload.replace(/\n/g, ' → ')}</li>}
+          {textDays.map((t) => (
+            <li key={t.title} className="text-muted">
+              {t.title}: {t.text}
+            </li>
+          ))}
         </ul>
       ) : (
         <ul className="flex flex-col gap-1.5">
@@ -150,7 +155,11 @@ export function BlockDetails({ program, block }: { program: Program; block: Bloc
               {n}
             </li>
           ))}
-          {cardio?.[block.id] && <li className="text-muted">Cardio: {cardio[block.id].replace(/\n/g, ' → ')}</li>}
+          {textDays.map((t) => (
+            <li key={t.title} className="text-muted">
+              {t.title}: {t.text}
+            </li>
+          ))}
           <li className="text-muted">Everything else: same in every block.</li>
         </ul>
       )}
@@ -163,7 +172,7 @@ function TodayCard({ program, today, sessions, onOpen }: { program: Program; tod
   const session = sessions.find((s) => s.date === today)
   const key = session?.dayId ?? ctx.dayKey
   let sub: string
-  if (isGymDay(key)) {
+  if (isGymDay(program, key)) {
     const ids = dayExerciseIds(program, key)
     const logged = ids.filter((id) => session?.exercises[id]?.sets.some((s) => s.done)).length
     sub =
@@ -343,7 +352,7 @@ function WeekRow({
   onOpenDay(d: string): void
 }) {
   const isCur = today >= week.from && today <= week.to
-  const gymDays = week.days.filter((d) => isGymDay(d.dayKey))
+  const gymDays = week.days.filter((d) => isGymDay(program, d.dayKey))
   const done = week.days.filter((d) => sessions.some((s) => s.date === d.date && s.exercises && Object.values(s.exercises).some((l) => l.sets.some((x) => x.done)))).length
   const blockLabel = week.block.deloadOf ? 'Deload' : `${week.block.label} · wk ${week.weekInBlock}`
 
@@ -365,7 +374,7 @@ function WeekRow({
           {week.days.map((d) => {
             const s = sessions.find((x) => x.date === d.date)
             const key = s?.dayId ?? d.dayKey
-            const gym = isGymDay(key)
+            const gym = isGymDay(program, key)
             const logged = !!s && Object.values(s.exercises).some((l) => l.sets.some((x) => x.done))
             const isToday = d.date === today
             const status = logged ? (

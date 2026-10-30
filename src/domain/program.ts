@@ -23,7 +23,7 @@ export interface DayContext {
   weekInBlock: number | null
   deload: boolean
   status: 'before' | 'active' | 'after'
-  /** 'A' | 'B' for gym days, otherwise a key of program.textDays. */
+  /** A key of program.days (gym day) or program.textDays. */
   dayKey: string
 }
 
@@ -39,11 +39,12 @@ export function dayContext(program: Program, date: string): DayContext {
     weekInBlock: block ? Math.floor(daysBetween(block.from, date) / 7) + 1 : null,
     deload: !!block?.deloadOf,
     status: date < program.start ? 'before' : date > last.to ? 'after' : 'active',
-    dayKey: program.schedule[weekday],
+    dayKey: (program.schedule as Record<string, string>)[weekday],
   }
 }
 
-export const isGymDay = (key: string): key is DayId => key === 'A' || key === 'B'
+/** Gym days are the ones the program defines in `days`; everything else is a plain-text day. */
+export const isGymDay = (program: Program, key: string): key is DayId => key in program.days
 
 /** Block whose targets apply (deload weeks use the block they follow). */
 function targetBlockId(ctx: DayContext, program: Program): string {
@@ -59,7 +60,7 @@ export function targetFor(ex: ExerciseDef, ctx: DayContext, program: Program): T
 }
 
 export function textDayBody(program: Program, ctx: DayContext): { title: string; text: string } {
-  const td = program.textDays[ctx.dayKey]
+  const td = program.textDays[ctx.dayKey] ?? { title: ctx.dayKey, text: {} }
   const key = ctx.deload ? 'deload' : targetBlockId(ctx, program)
   return { title: td.title, text: td.text[key] ?? td.text.default ?? '' }
 }
@@ -145,7 +146,7 @@ export function programWeeks(program: Program): ProgramWeek[] {
 }
 
 export function dayTitle(program: Program, dayKey: string): string {
-  return isGymDay(dayKey) ? program.days[dayKey].title : program.textDays[dayKey]?.title ?? dayKey
+  return isGymDay(program, dayKey) ? program.days[dayKey].title : (program.textDays[dayKey]?.title ?? dayKey)
 }
 
 /** Exercises whose targets change between blocks, grouped by identical targets. */
@@ -172,3 +173,23 @@ export function blockNotes(program: Program, blockId: string): string[] {
 
 export const dayExerciseIds = (program: Program, dayId: DayId) =>
   program.days[dayId].items.flatMap((it) => ('ex' in it ? [it.ex] : it.items))
+
+/** Plain-text days whose content changes per block (e.g. cardio), for one block. */
+export function blockTextDays(program: Program, block: Block): { title: string; text: string }[] {
+  const key = block.deloadOf ? 'deload' : block.id
+  return Object.values(program.textDays)
+    .filter((td) => key in td.text)
+    .map((td) => ({ title: td.title, text: td.text[key].replace(/\n/g, ' → ') }))
+}
+
+/** Text days that vary by block, with one line per block (for the program summary). */
+export function textDaysByBlock(program: Program): { title: string; rows: { label: string; text: string }[] }[] {
+  return Object.values(program.textDays)
+    .filter((td) => Object.keys(td.text).some((k) => k !== 'default'))
+    .map((td) => ({
+      title: td.title,
+      rows: program.blocks
+        .filter((b, i, all) => !b.deloadOf || all.findIndex((x) => x.deloadOf) === i)
+        .map((b) => ({ label: b.deloadOf ? 'Deload' : b.label, text: (td.text[b.deloadOf ? 'deload' : b.id] ?? td.text.default ?? '').replace(/\n/g, ' → ') })),
+    }))
+}

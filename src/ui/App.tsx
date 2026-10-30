@@ -58,7 +58,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
   const dayIdFor = (date: string): DayId | null => {
     if (!program) return null
     const key = dayContext(program, date).dayKey
-    return sessionFor(date)?.dayId ?? overrides[date] ?? (isGymDay(key) ? key : null)
+    return sessionFor(date)?.dayId ?? overrides[date] ?? (isGymDay(program, key) ? key : null)
   }
 
   const date = view.name === 'day' || view.name === 'log' ? view.date : today

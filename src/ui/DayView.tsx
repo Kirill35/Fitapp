@@ -222,7 +222,7 @@ function TextDay({ program, ctx, onPickDay }: { program: Program; ctx: DayContex
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
         <span>Training on a different day?</span>
-        {(['A', 'B'] as DayId[]).map((d) => (
+        {Object.keys(program.days).map((d) => (
           <button key={d} onClick={() => onPickDay(d)} className="rounded-lg border border-line px-3 py-2 font-semibold whitespace-nowrap text-chalk">
             Do {program.days[d].title}
           </button>
