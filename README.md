@@ -49,3 +49,5 @@ API_TOKEN=local-dev-token npm run smoke -- http://localhost:8787 --write
 
 For UI work, run `npm run dev` (port 5173) next to `npm run dev:api`; Vite proxies `/api` to the Worker.
 API tests (`worker/api.test.ts`) run against an in-memory SQLite that mimics D1, so they need no Cloudflare account.
+
+Sync is verified end to end with two simulated phones (`scripts/e2e-sync.mjs`): connect with a token, log, see it on the second phone, reload offline, keep logging, reconnect.

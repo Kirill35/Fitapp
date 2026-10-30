@@ -1,64 +1,95 @@
 import seed from '../seed/program.json'
-import { checkProgram } from '../../shared/schema'
-import type { Program, Session } from '../domain/types'
-import type { WorkoutRepository } from './WorkoutRepository'
+import { checkProgram, SessionSchema } from '../../shared/schema'
+import type { Session } from '../domain/types'
+import { browserKV, type KV } from './kv'
+import type { ProgramInfo, WorkoutRepository } from './WorkoutRepository'
 
 const KEY = 'liftlog.sessions.v1'
 
-// In-memory fallback when storage is unavailable (private mode, sandboxed preview).
-let memory: Record<string, Session> = {}
-
-function load(): Record<string, Session> {
+/** Validate a backup file (the app's export, or a plain list of sessions). */
+export function parseBackup(json: string): Session[] {
+  let parsed: unknown
   try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? JSON.parse(raw) : memory
+    parsed = JSON.parse(json)
   } catch {
-    return memory
+    throw new Error('This is not valid JSON.')
   }
-}
-
-function store(all: Record<string, Session>) {
-  memory = all
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all))
-  } catch {
-    /* keep in memory */
-  }
+  const list = Array.isArray(parsed) ? parsed : (parsed as { sessions?: unknown } | null)?.sessions
+  if (!Array.isArray(list)) throw new Error('This file is not a Lift Log backup.')
+  return list.map((item, i) => {
+    const r = SessionSchema.safeParse(item)
+    if (!r.success) throw new Error(`Session #${i + 1} in the file is not valid. Nothing was imported.`)
+    return r.data
+  })
 }
 
 export class LocalStorageRepository implements WorkoutRepository {
-  async getProgram(): Promise<Program> {
+  constructor(
+    private kv: KV = browserKV(),
+    private now: () => string = () => new Date().toISOString(),
+  ) {}
+
+  private load(): Record<string, Session> {
+    try {
+      const raw = this.kv.get(KEY)
+      return raw ? JSON.parse(raw) : {}
+    } catch {
+      return {}
+    }
+  }
+
+  private store(all: Record<string, Session>) {
+    this.kv.set(KEY, JSON.stringify(all))
+  }
+
+  async getProgram(): Promise<ProgramInfo> {
     const r = checkProgram(seed)
     if (!r.ok) throw new Error(`Program is invalid:\n${r.errors.join('\n')}`)
-    return r.program
+    return { version: 0, program: r.program }
   }
 
   async listSessions(): Promise<Session[]> {
-    return Object.values(load())
+    return Object.values(this.load())
   }
 
+  get(id: string): Session | undefined {
+    return this.load()[id]
+  }
+
+  /** Stamps the edit time, never earlier than the previous edit, so the server always sees a newer value. */
   async saveSession(session: Session): Promise<void> {
-    const all = load()
-    all[session.id] = { ...session, updatedAt: new Date().toISOString() }
-    store(all)
+    const all = this.load()
+    const prev = all[session.id]?.updatedAt
+    let stamp = this.now()
+    if (prev && stamp <= prev) stamp = new Date(Date.parse(prev) + 1).toISOString()
+    all[session.id] = { ...session, updatedAt: stamp }
+    this.store(all)
+  }
+
+  /** Store sessions exactly as received (keeps their timestamps). Only newer-than-local ones are applied. */
+  applyRemote(sessions: Session[]): number {
+    const all = this.load()
+    let n = 0
+    for (const s of sessions) {
+      const cur = all[s.id]
+      if (!cur || s.updatedAt > cur.updatedAt) {
+        all[s.id] = s
+        n++
+      }
+    }
+    if (n) this.store(all)
+    return n
   }
 
   async exportData(): Promise<string> {
-    return JSON.stringify({ app: 'lift-log', version: 1, exportedAt: new Date().toISOString(), sessions: Object.values(load()) }, null, 2)
+    return JSON.stringify({ app: 'lift-log', version: 1, exportedAt: this.now(), sessions: Object.values(this.load()) }, null, 2)
   }
 
   async importData(json: string): Promise<void> {
-    const parsed = JSON.parse(json)
-    const list: Session[] = Array.isArray(parsed) ? parsed : parsed.sessions
-    if (!Array.isArray(list) || list.some((s) => !s.id || !s.date || !s.exercises)) {
-      throw new Error('This file is not a Lift Log backup.')
-    }
-    const all = load()
-    for (const s of list) all[s.id] = s
-    store(all)
+    this.applyRemote(parseBackup(json))
   }
 
   async clearSessions(): Promise<void> {
-    store({})
+    this.store({})
   }
 }

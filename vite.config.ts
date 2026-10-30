@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => ({
               { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
             ],
           },
-          workbox: { globPatterns: ['**/*.{js,css,html,svg,png}'] },
+          workbox: { globPatterns: ['**/*.{js,css,html,svg,png}'], navigateFallbackDenylist: [/^\/api\//] },
         }),
   ],
   // `npm run dev` + `npm run dev:api`: the app talks to the local Worker on the same origin.

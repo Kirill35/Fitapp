@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { WorkoutRepository } from '../data/WorkoutRepository'
+import type { SyncControl, SyncInfo, WorkoutRepository } from '../data/WorkoutRepository'
 import { DEV_TOOLS } from '../dev'
 import { demoSessions } from '../data/demo'
 import { BackBar } from './common'
@@ -11,12 +11,13 @@ interface Props {
   today: string
   previewDate: string | null
   onPreviewDate(d: string | null): void
+  sync: { control: SyncControl; info: SyncInfo | null } | null
   onDataChanged(): void
   onProgram(): void
   onBack(): void
 }
 
-export default function SettingsView({ repo, program, today, previewDate, onPreviewDate, onDataChanged, onProgram, onBack }: Props) {
+export default function SettingsView({ repo, program, today, previewDate, onPreviewDate, sync, onDataChanged, onProgram, onBack }: Props) {
   const [exported, setExported] = useState<string | null>(null)
   const [importText, setImportText] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
@@ -65,6 +66,8 @@ export default function SettingsView({ repo, program, today, previewDate, onPrev
           </span>
           <span className="text-2xl text-muted">›</span>
         </button>
+
+        {sync && <SyncSection control={sync.control} info={sync.info ?? sync.control.info()} />}
 
         <section className="flex flex-col gap-3">
           <h2 className="text-xs font-semibold tracking-wider text-muted uppercase">Backup</h2>
@@ -198,5 +201,75 @@ export default function SettingsView({ repo, program, today, previewDate, onPrev
         </div>
       )}
     </div>
+  )
+}
+
+function describe(i: SyncInfo): string {
+  const n = i.pending ? ` ${i.pending} change${i.pending > 1 ? 's' : ''} waiting.` : ''
+  switch (i.state) {
+    case 'local':
+      return 'Not connected. Your data is only on this phone.'
+    case 'syncing':
+      return 'Syncing…'
+    case 'synced':
+      return `Up to date${i.lastSync ? ` · ${new Date(i.lastSync).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+    case 'pending':
+      return `Waiting to upload.${n}`
+    case 'offline':
+      return `Offline.${n} Everything is saved on this phone and uploads when the connection is back.`
+    case 'unauthorized':
+      return `The server did not accept the token. Paste it again.${n}`
+    case 'error':
+      return i.error ?? 'Sync problem.'
+  }
+}
+
+function SyncSection({ control, info }: { control: SyncControl; info: SyncInfo }) {
+  const [token, setToken] = useState('')
+  const connected = control.hasToken()
+  const btn = 'h-12 rounded-xl px-4 font-semibold active:scale-[0.99]'
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xs font-semibold tracking-wider text-muted uppercase">Sync</h2>
+      <p role="status" className={`text-[15px] ${info.state === 'unauthorized' || info.state === 'error' ? 'text-hard' : ''}`}>
+        {describe(info)}
+      </p>
+      {connected ? (
+        <div className="flex gap-2">
+          <button onClick={() => void control.syncNow()} className={`${btn} flex-1 bg-panel-2`}>
+            Sync now
+          </button>
+          <button onClick={() => control.setToken(null)} className={`${btn} border border-line text-muted`}>
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (token.trim()) {
+              control.setToken(token)
+              setToken('')
+            }
+          }}
+        >
+          <input
+            id="sync-token"
+            type="password"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            placeholder="Paste your access token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="h-12 rounded-xl border border-line bg-panel px-3"
+          />
+          <button type="submit" disabled={!token.trim()} className={`${btn} bg-plate text-bg disabled:bg-panel-2 disabled:text-muted`}>
+            Connect
+          </button>
+        </form>
+      )}
+    </section>
   )
 }

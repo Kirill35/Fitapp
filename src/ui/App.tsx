@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { WorkoutRepository } from '../data/WorkoutRepository'
+import type { ProgramInfo, SyncInfo, WorkoutRepository } from '../data/WorkoutRepository'
 import { sessionId } from '../data/WorkoutRepository'
 import { lastPerformance } from '../domain/history'
 import { dayContext, dayExerciseIds, isGymDay, targetFor, toIso } from '../domain/program'
@@ -30,7 +30,9 @@ type View =
   | { name: 'program' }
 
 export default function App({ repo }: { repo: WorkoutRepository }) {
-  const [program, setProgram] = useState<Program | null>(null)
+  const [programInfo, setProgramInfo] = useState<ProgramInfo | null>(null)
+  const program: Program | null = programInfo?.program ?? null
+  const [syncInfo, setSyncInfo] = useState<SyncInfo | null>(repo.sync?.info() ?? null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [previewDate, setPreviewDateState] = useState<string | null>(readPreview)
   const today = previewDate ?? toIso(new Date())
@@ -49,10 +51,30 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
     setSessions(next)
   }, [])
   const reload = useCallback(() => repo.listSessions().then(commit), [repo, commit])
+  const loadProgram = useCallback(
+    () => repo.getProgram().then((p) => setProgramInfo((prev) => (prev && prev.version === p.version ? prev : p))),
+    [repo],
+  )
   useEffect(() => {
-    repo.getProgram().then(setProgram)
-    reload()
-  }, [repo, reload])
+    void loadProgram()
+    void reload()
+  }, [loadProgram, reload])
+
+  // Background sync: show its state, and reload when it brought in new sessions or a new program.
+  useEffect(() => {
+    const sync = repo.sync
+    if (!sync) return
+    let rev = sync.info().revision
+    return sync.subscribe(() => {
+      const info = sync.info()
+      setSyncInfo(info)
+      if (info.revision !== rev) {
+        rev = info.revision
+        void reload()
+        void loadProgram()
+      }
+    })
+  }, [repo, reload, loadProgram])
 
   const sessionFor = (date: string) => sessions.find((s) => s.date === date) ?? null
   const dayIdFor = (date: string): DayId | null => {
@@ -83,6 +105,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
         date,
         dayId: dId,
         blockId: ctx.block?.id ?? null,
+        programVersion: programInfo?.version,
         status: 'in-progress',
         exercises: {},
         updatedAt: '',
@@ -115,7 +138,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
     },
     // dayIdFor reads `overrides`; it is recreated every render, so it is deliberately not a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [program, overrides, repo, commit],
+    [program, programInfo, overrides, repo, commit],
   )
 
   const finish = (date: string) => {
@@ -148,6 +171,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
           today={today}
           previewDate={previewDate}
           onPreviewDate={setPreviewDate}
+          sync={repo.sync ? { control: repo.sync, info: syncInfo } : null}
           onDataChanged={reload}
           onProgram={() => setView({ name: 'program' })}
           onBack={() => setView({ name: 'home' })}
@@ -201,6 +225,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
       today={today}
       previewDate={previewDate}
       sessions={sessions}
+      sync={syncInfo}
       onOpenDay={(d) => setView({ name: 'day', date: d })}
       onSettings={() => setView({ name: 'settings' })}
     />

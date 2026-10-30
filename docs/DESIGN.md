@@ -117,9 +117,9 @@ wrangler.toml
 ## Delivery steps
 | Step | Result you can check |
 |---|---|
-| 1. Shared schema + `DayId` generalisation | Current program still renders identically; invalid programs are rejected with clear errors |
-| 2. Worker + D1 + auth, local only | API passes its tests; I can curl it locally |
-| 3. `SyncedRepository` + header dot | Log with airplane mode on, reconnect, data appears on a second browser |
+| 1. Shared schema + `DayId` generalisation ✅ | Current program still renders identically; invalid programs are rejected with clear errors |
+| 2. Worker + D1 + auth, local only ✅ | API passes its tests; verified on workerd with a real local D1 |
+| 3. `SyncedRepository` + header dot ✅ | Log with airplane mode on, reconnect, data appears on a second browser (`scripts/e2e-sync.mjs`) |
 | 4. Deploy to Cloudflare | Installed PWA on your phone, working offline, token set |
 | 5. Import program + diff + versions | Paste an AI-generated program, review the diff, activate, roll back |
 | 6. Corrections editor | Change a start weight or video link, new version appears |

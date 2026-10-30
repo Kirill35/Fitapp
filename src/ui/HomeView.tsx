@@ -16,6 +16,7 @@ import {
   textDayBody,
   type ProgramWeek,
 } from '../domain/program'
+import type { SyncInfo } from '../data/WorkoutRepository'
 import type { Block, Program, Session } from '../domain/types'
 import LineChart from './LineChart'
 
@@ -24,11 +25,12 @@ interface Props {
   today: string
   previewDate: string | null
   sessions: Session[]
+  sync: SyncInfo | null
   onOpenDay(date: string): void
   onSettings(): void
 }
 
-export default function HomeView({ program, today, previewDate, sessions, onOpenDay, onSettings }: Props) {
+export default function HomeView({ program, today, previewDate, sessions, sync, onOpenDay, onSettings }: Props) {
   const ctx = dayContext(program, today)
   const weeks = useMemo(() => programWeeks(program), [program])
   const blockWeeks = ctx.block ? weeks.filter((w) => w.block.id === ctx.block!.id).length : 0
@@ -41,9 +43,12 @@ export default function HomeView({ program, today, previewDate, sessions, onOpen
             {fmtDate(today)}
             {previewDate && <span className="ml-2 rounded bg-plate/15 px-1.5 py-0.5 text-xs text-plate">preview date</span>}
           </span>
-          <button onClick={onSettings} aria-label="Settings" className="-mr-2 grid size-10 place-items-center rounded-full text-lg">
-            ⚙︎
-          </button>
+          <span className="flex items-center gap-1">
+            <SyncDot info={sync} />
+            <button onClick={onSettings} aria-label="Settings" className="-mr-2 grid size-10 place-items-center rounded-full text-lg">
+              ⚙︎
+            </button>
+          </span>
         </div>
         <div className="flex flex-wrap items-baseline gap-x-3">
           <h1 className="font-display text-[34px] leading-tight font-bold tracking-tight">
@@ -401,4 +406,21 @@ function WeekRow({
       )}
     </div>
   )
+}
+
+const DOT: Record<string, { cls: string; text: string }> = {
+  synced: { cls: 'bg-done', text: 'Synced' },
+  syncing: { cls: 'bg-plate animate-pulse', text: 'Syncing' },
+  pending: { cls: 'bg-plate', text: 'Waiting to upload' },
+  offline: { cls: 'bg-muted', text: 'Offline, saved on this phone' },
+  unauthorized: { cls: 'bg-hard', text: 'Sync needs the token again' },
+  error: { cls: 'bg-hard', text: 'Sync problem' },
+}
+
+/** Small status dot. Hidden when sync is not set up, so a local-only app shows nothing extra. */
+function SyncDot({ info }: { info: SyncInfo | null }) {
+  const d = info && DOT[info.state]
+  if (!info || !d) return null
+  const label = info.pending ? `${d.text} · ${info.pending} change${info.pending > 1 ? 's' : ''}` : d.text
+  return <span role="status" aria-label={label} title={label} className={`size-2.5 rounded-full ${d.cls}`} />
 }
