@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { WorkoutRepository } from '../data/WorkoutRepository'
+import { DEV_TOOLS } from '../dev'
 import { demoSessions } from '../data/demo'
 import { BackBar } from './common'
 import type { Program } from '../domain/types'
@@ -119,6 +120,7 @@ export default function SettingsView({ repo, program, today, previewDate, onPrev
           )}
         </section>
 
+        {DEV_TOOLS && (
         <section className="flex flex-col gap-3 rounded-2xl border border-dashed border-line p-4">
           <h2 className="text-xs font-semibold tracking-wider text-muted uppercase">Prototype testing only</h2>
           <label className="flex flex-col gap-1 text-sm">
@@ -185,6 +187,7 @@ export default function SettingsView({ repo, program, today, previewDate, onPrev
             </button>
           )}
         </section>
+        )}
       </main>
 
       {msg && (

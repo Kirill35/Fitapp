@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { WorkoutRepository } from '../data/WorkoutRepository'
 import { sessionId } from '../data/WorkoutRepository'
 import { lastPerformance } from '../domain/history'
 import { dayContext, dayExerciseIds, isGymDay, targetFor, toIso } from '../domain/program'
 import type { DayId, ExerciseLog, LastPerformance, Program, Session } from '../domain/types'
+import { DEV_TOOLS } from '../dev'
 import HomeView from './HomeView'
 import DayView from './DayView'
 import LogView from './LogView'
@@ -13,6 +14,7 @@ import ProgramView from './ProgramView'
 const PREVIEW_KEY = 'liftlog.previewDate'
 
 function readPreview(): string | null {
+  if (!DEV_TOOLS) return null
   try {
     return localStorage.getItem(PREVIEW_KEY)
   } catch {
@@ -40,7 +42,13 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
     window.scrollTo(0, 0)
   }
 
-  const reload = useCallback(() => repo.listSessions().then(setSessions), [repo])
+  // The ref is the source of truth for edits, so two edits in one tick (e.g. rapid taps) never overwrite each other.
+  const sessionsRef = useRef<Session[]>([])
+  const commit = useCallback((next: Session[]) => {
+    sessionsRef.current = next
+    setSessions(next)
+  }, [])
+  const reload = useCallback(() => repo.listSessions().then(commit), [repo, commit])
   useEffect(() => {
     repo.getProgram().then(setProgram)
     reload()
@@ -68,7 +76,8 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
       const dId = dayIdFor(date)
       if (!dId) return
       const ctx = dayContext(program, date)
-      const existing = sessions.find((s) => s.date === date && s.dayId === dId)
+      const all = sessionsRef.current
+      const existing = all.find((s) => s.date === date && s.dayId === dId)
       const base: Session = existing ?? {
         id: sessionId(date, dId),
         date,
@@ -84,7 +93,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
         if (exercises[id]) continue
         const ex = program.exercises[id]
         const t = targetFor(ex, ctx, program)
-        const last = lastPerformance(sessions, id, date)
+        const last = lastPerformance(all, id, date)
         const reps = Array.isArray(t.reps) ? t.reps[0] : t.reps
         exercises[id] = {
           sets: Array.from({ length: t.sets }, (_, i) => ({
@@ -101,18 +110,19 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
       }
       if (!changed) return
       const next = { ...base, exercises, updatedAt: new Date().toISOString() }
-      setSessions((all) => [...all.filter((s) => s.id !== next.id), next])
+      commit([...all.filter((s) => s.id !== next.id), next])
       void repo.saveSession(next)
     },
+    // dayIdFor reads `overrides`; it is recreated every render, so it is deliberately not a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [program, sessions, overrides, repo],
+    [program, overrides, repo, commit],
   )
 
   const finish = (date: string) => {
-    const s = sessionFor(date)
+    const s = sessionsRef.current.find((x) => x.date === date)
     if (!s) return
     const next: Session = { ...s, status: 'done', updatedAt: new Date().toISOString() }
-    setSessions((all) => all.map((x) => (x.id === s.id ? next : x)))
+    commit(sessionsRef.current.map((x) => (x.id === s.id ? next : x)))
     void repo.saveSession(next)
   }
 

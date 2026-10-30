@@ -15,7 +15,7 @@ npm install
 npm run dev          # http://localhost:5173, also on your LAN IP
 npm run build        # installable offline PWA in dist/
 npm run build:single # one self-contained HTML file in dist-single/
-npm test             # voice parser checks
+npm test             # unit tests (calendar, targets, volume, voice)
 ```
 
 ### On your iPhone over Wi-Fi
@@ -35,3 +35,5 @@ npm test             # voice parser checks
 - `src/domain/history.ts` — last time per exercise, volume per week/month.
 - `src/domain/voice.ts` — voice phrase parser (pure, tested in `voice.test.ts`).
 - `src/ui/` — Home, Day, Log, Voice, Settings, Program views.
+
+See `docs/DESIGN.md` for the backend and sync design.

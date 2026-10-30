@@ -9,7 +9,7 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview --host",
     "typecheck": "tsc -b",
-    "test": "node --experimental-strip-types --no-warnings src/domain/voice.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -24,6 +24,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vite-plugin-pwa": "^2.0.0",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.5"
   }
 }

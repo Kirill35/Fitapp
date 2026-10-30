@@ -1,6 +1,7 @@
-// Run: npm test  (Node's built-in TypeScript stripping, no extra deps)
+// Run: npm test
+import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { applyVoice, parseVoice } from './voice.ts'
+import { applyVoice, parseVoice } from './voice'
 
 const c = [
   { id: 'bench', name: 'Bench press', aliases: ['bench'], hasLoad: true },
@@ -19,9 +20,12 @@ const cases: [string, object][] = [
   ['nordic 2 sets 5 reps right', { exerciseId: 'nordic', sets: 2, values: [5], difficulty: 'Right' }],
   ['85 kilos 5', { exerciseId: 'bench', kg: 85, values: [5] }],
 ]
-for (const [text, want] of cases) assert.deepEqual(parseVoice(text, c, 'bench'), want, text)
+test('parses spoken sets', () => {
+  for (const [text, want] of cases) assert.deepEqual(parseVoice(text, c, 'bench'), want, text)
+})
 
 const log = { sets: [{ kg: 80, value: 5, done: true }, { kg: 80, value: 5, done: false }, { kg: 80, value: 5, done: false }] }
+test('applies voice to sets', () => {
 assert.deepEqual(applyVoice(log, { kg: 82.5, values: [5] }).sets, [
   { kg: 80, value: 5, done: true },
   { kg: 82.5, value: 5, done: true },
@@ -32,4 +36,4 @@ assert.deepEqual(applyVoice(log, { sets: 2, kg: 85, values: [5, 4] }).sets.map((
   [85, 4, true],
   [85, 5, false],
 ])
-console.log(`voice: ${cases.length + 2} checks passed`)
+})
