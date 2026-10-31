@@ -13,7 +13,7 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "lift-log"
 # Replace after `npx wrangler d1 create lift-log` (local dev works with any value).
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "9504f49a-95c5-4b82-92b9-29054c1da0f8"
 migrations_dir = "worker/migrations"
 
 # Secret, not stored here: `npx wrangler secret put API_TOKEN`

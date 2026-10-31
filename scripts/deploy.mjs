@@ -59,7 +59,7 @@ if (!hasSecret || rotate) {
 
 if (url && token) {
   step('Smoke test (read-only)')
-  const r = spawnSync('node', ['scripts/smoke-api.mjs', url], { env: { ...process.env, API_TOKEN: token }, stdio: 'inherit' })
+  const r = spawnSync('node', ['scripts/smoke-api.mjs', url], { env: { ...process.env, API_TOKEN: token, NODE_USE_ENV_PROXY: '1' }, stdio: 'inherit' })
   if (r.status !== 0) process.exitCode = 1
 }
 

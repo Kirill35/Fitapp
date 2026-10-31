@@ -28,3 +28,9 @@ Environment settings (cloud environment menu → Edit):
 - Rotate the access token: `node scripts/deploy.mjs --rotate-token`, then paste the new one on each phone.
 - Redeploy after a change: the same command. Existing data and the token are left alone.
 - Restore points: D1 Time Travel (`npx wrangler d1 time-travel info lift-log`).
+
+## Deployed
+- Address: https://lift-log.ronzhin-k-a.workers.dev
+- Worker `lift-log`, D1 database `lift-log` (id in `wrangler.toml`), secret `API_TOKEN`.
+- The smoke test cannot run from the Claude cloud sandbox (its proxy refuses `*.workers.dev`). Run it from your own computer:
+  `API_TOKEN=... node scripts/smoke-api.mjs https://lift-log.ronzhin-k-a.workers.dev`
