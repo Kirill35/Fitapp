@@ -6,7 +6,7 @@ const ORDER = ['tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'mon']
 const DAY = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' } as Record<string, string>
 
 /** One-screen summary of the whole program. */
-export default function ProgramView({ program, onBack }: { program: Program; onBack(): void }) {
+export default function ProgramView({ program, version, onUpdate, onBack }: { program: Program; version: number; onUpdate?(): void; onBack(): void }) {
   const mainBlocks = program.blocks.filter((b) => !b.deloadOf)
   const main = Object.values(program.exercises).filter((ex) => ex.byBlock)
   const sched = program.schedule as Record<string, string>
@@ -16,7 +16,21 @@ export default function ProgramView({ program, onBack }: { program: Program; onB
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <BackBar label="Settings" onBack={onBack} />
       <main className="flex flex-col gap-7 px-4 pt-3 pb-12 text-[15px]">
-        <h1 className="font-display text-3xl font-bold">Program</h1>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h1 className="font-display text-3xl font-bold">Program</h1>
+            <span className="num text-sm text-muted">{version === 0 ? 'Built into the app' : `Version ${version}`}</span>
+          </div>
+          {onUpdate && (
+            <button onClick={onUpdate} className="flex items-center justify-between rounded-2xl border border-line bg-panel px-4 py-4 text-left active:scale-[0.99]">
+              <span>
+                <span className="block font-semibold">Update program</span>
+                <span className="text-sm text-muted">Paste a new one from an AI, review changes, restore older versions</span>
+              </span>
+              <span className="text-2xl text-muted">›</span>
+            </button>
+          )}
+        </div>
 
         <section>
           <h2 className={h2}>Every week (Tue–Mon)</h2>

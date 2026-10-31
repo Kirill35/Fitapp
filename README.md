@@ -6,6 +6,7 @@ Minimal workout tracker. Phase 1: front-end prototype only (no backend).
 - **Day**: the day's exercises in order, target sets × reps, what you did last time. Warm-up items have ▶ technique links.
 - **Log**: tap an exercise, adjust the pre-filled sets with ± steppers, tick ✓, tap one difficulty, ▶ technique link. Shows today next to last time. No predictions.
 - **Voice**: "deadlift 110 kilos 5 5 5 right" fills the sets. Without a set count ("85 kilos 5") it fills the next set. Uses the browser's speech recognition, or type/dictate with the iPhone keyboard mic.
+- **Program**: Settings → Program → Update program. Copy a ready-made prompt for an AI, paste its JSON answer, see exactly what changes (and what it means for your logged history), then activate. Older versions can be restored.
 - **Settings**: Program summary, Export / Import JSON. A "Prototype testing only" section lets you pick a preview date and add example history.
 
 ## Run

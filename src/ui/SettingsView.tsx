@@ -61,8 +61,8 @@ export default function SettingsView({ repo, program, today, previewDate, onPrev
       <main className="flex flex-col gap-8 px-4 py-5">
         <button onClick={onProgram} className="flex items-center justify-between rounded-2xl border border-line bg-panel px-4 py-4 text-left">
           <span>
-            <span className="block font-semibold">Program summary</span>
-            <span className="text-sm text-muted">Schedule, blocks, what changes, cardio</span>
+            <span className="block font-semibold">Program</span>
+            <span className="text-sm text-muted">Schedule, blocks, update from an AI</span>
           </span>
           <span className="text-2xl text-muted">›</span>
         </button>

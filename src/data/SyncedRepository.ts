@@ -2,7 +2,7 @@ import type { Session } from '../domain/types'
 import { ApiClient, ApiError, type ApiOptions } from './ApiClient'
 import type { KV } from './kv'
 import { LocalStorageRepository, parseBackup } from './LocalStorageRepository'
-import type { ProgramInfo, SyncControl, SyncInfo, SyncState, WorkoutRepository } from './WorkoutRepository'
+import type { ProgramControl, ProgramInfo, SyncControl, SyncInfo, SyncState, WorkoutRepository } from './WorkoutRepository'
 import { checkProgram } from '../../shared/schema'
 
 const TOKEN = 'liftlog.token.v1'
@@ -22,6 +22,26 @@ export interface SyncedOptions extends ApiOptions {
  */
 export class SyncedRepository implements WorkoutRepository, SyncControl {
   sync = this
+
+  /** Program versions: always talk to the server, then refresh the cached active program. */
+  programs: ProgramControl = {
+    available: () => this.hasToken(),
+    list: () => this.withApi((api) => api.listProgramVersions()),
+    get: (v) => this.withApi((api) => api.getProgramVersion(v)),
+    save: (program, o) =>
+      this.withApi(async (api) => {
+        const v = await api.putProgram(program, o.source, o.note)
+        await this.pullProgram(api)
+        this.emit()
+        return v
+      }),
+    activate: (v) =>
+      this.withApi(async (api) => {
+        await api.activateProgram(v)
+        await this.pullProgram(api)
+        this.emit()
+      }),
+  }
   private listeners = new Set<() => void>()
   private revision = 0
   private state: SyncState
@@ -38,6 +58,7 @@ export class SyncedRepository implements WorkoutRepository, SyncControl {
   ) {
     this.state = this.hasToken() ? 'pending' : 'local'
   }
+
 
   // ---- WorkoutRepository (always local) ----
 
@@ -144,6 +165,23 @@ export class SyncedRepository implements WorkoutRepository, SyncControl {
   }
 
   // ---- internals ----
+
+  private async withApi<T>(fn: (api: ApiClient) => Promise<T>): Promise<T> {
+    const token = this.kv.get(TOKEN)
+    if (!token) throw new Error('Connect this phone in Settings → Sync first.')
+    try {
+      return await fn(new ApiClient(token, this.opts))
+    } catch (e) {
+      if (e instanceof ApiError) {
+        if (e.kind === 'network') throw new Error('No connection. Changing the program needs the internet.')
+        if (e.kind === 'auth') throw new Error('The server did not accept the token. Paste it again in Settings → Sync.')
+        if (e.details.length) throw new Error(`${e.message}:\n${e.details.join('\n')}`)
+        throw new Error(e.message)
+      }
+      throw e
+    }
+  }
+
 
   private outbox(): string[] {
     try {

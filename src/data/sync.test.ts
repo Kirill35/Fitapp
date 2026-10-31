@@ -278,6 +278,80 @@ describe('program', () => {
   })
 })
 
+describe('changing the program', () => {
+  const changed = (fn: (p: any) => void) => {
+    const p = structuredClone(seed) as any
+    fn(p)
+    return p
+  }
+
+  test('a new version becomes the active program on this phone and on another one', async () => {
+    const net = new Net()
+    const a = phone(net)
+    const b = phone(net)
+    await a.repo.sync.syncNow()
+    await b.repo.sync.syncNow()
+    const notified = { n: 0 }
+    a.repo.subscribe(() => notified.n++)
+    const rev = a.repo.info().revision
+
+    const v = await a.repo.programs.save(changed((p) => (p.exercises.bench.start = 90)), { source: 'ai', note: 'bench up' })
+    expect(v).toBe(2)
+    expect((await a.repo.getProgram()).program.exercises.bench.start).toBe(90)
+    expect(a.repo.info().revision).toBeGreaterThan(rev) // the app reloads the program
+    expect(notified.n).toBeGreaterThan(0)
+
+    await b.repo.sync.syncNow()
+    expect((await b.repo.getProgram()).version).toBe(2)
+  })
+
+  test('versions are listed and an older one can be restored', async () => {
+    const net = new Net()
+    const { repo } = phone(net)
+    await repo.sync.syncNow()
+    await repo.programs.save(changed((p) => (p.exercises.bench.start = 90)), { source: 'ai' })
+    const list = await repo.programs.list()
+    expect(list.map((x) => [x.version, x.source, x.active])).toEqual([[2, 'ai', true], [1, 'seed', false]])
+    expect((await repo.programs.get(1)).exercises.bench.start).toBe(85)
+
+    await repo.programs.activate(1)
+    expect((await repo.getProgram()).version).toBe(1)
+    expect((await repo.getProgram()).program.exercises.bench.start).toBe(85)
+    expect((await repo.programs.list()).find((x) => x.active)?.version).toBe(1)
+  })
+
+  test('a program the server refuses is explained, and nothing changes', async () => {
+    const net = new Net()
+    const { repo } = phone(net)
+    await repo.sync.syncNow()
+    const bad = changed((p) => (p.days.A.items[0].ex = 'nope'))
+    await expect(repo.programs.save(bad, { source: 'ai' })).rejects.toThrow('unknown exercise "nope"')
+    expect((await repo.getProgram()).version).toBe(1)
+    expect((await repo.programs.list()).length).toBe(1)
+  })
+
+  test('without a connection, or without a token, it says what to do', async () => {
+    const net = new Net()
+    const { repo } = phone(net)
+    net.offline = true
+    await expect(repo.programs.save(seed as never, { source: 'ai' })).rejects.toThrow('needs the internet')
+    const local = phone(net, null)
+    expect(local.repo.programs.available()).toBe(false)
+    await expect(local.repo.programs.list()).rejects.toThrow('Connect this phone')
+  })
+
+  test('logged workouts keep working after the program changes under them', async () => {
+    const net = new Net()
+    const { repo } = phone(net)
+    await repo.saveSession(session(85))
+    await repo.sync.syncNow()
+    await repo.programs.save(changed((p) => { delete p.days.A; p.schedule.tue = 'bjj' }), { source: 'ai' })
+    expect(await kgOf(repo)).toBe(85) // the old workout is still there
+    await repo.sync.syncNow()
+    expect(repo.info().state).toBe('synced')
+  })
+})
+
 describe('network edge cases', () => {
   test('an HTML page instead of the API (captive portal, hosting error) counts as offline, not as success', async () => {
     const net = new Net()

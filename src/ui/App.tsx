@@ -10,6 +10,7 @@ import DayView from './DayView'
 import LogView from './LogView'
 import SettingsView from './SettingsView'
 import ProgramView from './ProgramView'
+import ProgramChangeView from './ProgramChangeView'
 
 const PREVIEW_KEY = 'liftlog.previewDate'
 
@@ -28,6 +29,7 @@ type View =
   | { name: 'log'; date: string; item: number }
   | { name: 'settings' }
   | { name: 'program' }
+  | { name: 'program-change' }
 
 export default function App({ repo }: { repo: WorkoutRepository }) {
   const [programInfo, setProgramInfo] = useState<ProgramInfo | null>(null)
@@ -76,11 +78,19 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
     })
   }, [repo, reload, loadProgram])
 
-  const sessionFor = (date: string) => sessions.find((s) => s.date === date) ?? null
+  // A logged workout can belong to a day the current program no longer has; prefer one that still exists.
+  const sessionFor = (date: string) => {
+    const all = sessions.filter((s) => s.date === date)
+    return all.find((s) => !program || s.dayId in program.days) ?? all[0] ?? null
+  }
   const dayIdFor = (date: string): DayId | null => {
     if (!program) return null
+    const logged = sessionFor(date)?.dayId
+    if (logged && logged in program.days) return logged
+    const picked = overrides[date]
+    if (picked && picked in program.days) return picked
     const key = dayContext(program, date).dayKey
-    return sessionFor(date)?.dayId ?? overrides[date] ?? (isGymDay(program, key) ? key : null)
+    return isGymDay(program, key) ? key : null
   }
 
   const date = view.name === 'day' || view.name === 'log' ? view.date : today
@@ -178,14 +188,35 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
         />
       )
     case 'program':
-      return <ProgramView program={program} onBack={() => setView({ name: 'settings' })} />
-    case 'log':
-      if (!dayId) break
+      return (
+        <ProgramView
+          program={program}
+          version={programInfo?.version ?? 0}
+          onUpdate={repo.programs ? () => setView({ name: 'program-change' }) : undefined}
+          onBack={() => setView({ name: 'settings' })}
+        />
+      )
+    case 'program-change':
+      if (!repo.programs) break
+      return (
+        <ProgramChangeView
+          program={program}
+          version={programInfo?.version ?? 0}
+          sessions={sessions}
+          today={today}
+          programs={repo.programs}
+          onBack={() => setView({ name: 'program' })}
+        />
+      )
+    case 'log': {
+      const item = dayId ? program.days[dayId]?.items[view.item] : undefined
+      // The program can change while this screen is open (another phone, or a rollback): fall back to the day.
+      if (!dayId || !item) return <DayFallback onBack={() => setView({ name: 'day', date: view.date })} />
       return (
         <LogView
           program={program}
           ctx={dayContext(program, view.date)}
-          item={program.days[dayId].items[view.item]}
+          item={item}
           session={sessionFor(view.date)}
           lasts={lasts}
           onOpen={(ids) => editSession(view.date, ids)}
@@ -193,6 +224,7 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
           onBack={() => setView({ name: 'day', date: view.date })}
         />
       )
+    }
     case 'day':
       return (
         <DayView
@@ -229,5 +261,16 @@ export default function App({ repo }: { repo: WorkoutRepository }) {
       onOpenDay={(d) => setView({ name: 'day', date: d })}
       onSettings={() => setView({ name: 'settings' })}
     />
+  )
+}
+
+function DayFallback({ onBack }: { onBack(): void }) {
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="text-lg">The program changed while this exercise was open.</p>
+      <button onClick={onBack} className="h-12 rounded-xl bg-plate px-6 font-semibold text-bg">
+        Back to the day
+      </button>
+    </div>
   )
 }

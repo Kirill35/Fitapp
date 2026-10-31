@@ -18,6 +18,25 @@ export interface SyncInfo {
   revision: number
 }
 
+export interface ProgramVersionInfo {
+  version: number
+  source: 'seed' | 'ai' | 'manual'
+  note: string | null
+  createdAt: string
+  active: boolean
+}
+
+/** Program versions live on the server, so this exists only on repositories that have one. */
+export interface ProgramControl {
+  /** False until the phone is connected with a token. */
+  available(): boolean
+  list(): Promise<ProgramVersionInfo[]>
+  get(version: number): Promise<Program>
+  /** Stores a new version and makes it the active program. Returns its version number. */
+  save(program: Program, opts: { source: 'ai' | 'manual'; note?: string }): Promise<number>
+  activate(version: number): Promise<void>
+}
+
 /** Present only on repositories that talk to a server. */
 export interface SyncControl {
   info(): SyncInfo
@@ -40,6 +59,7 @@ export interface WorkoutRepository {
   importData(json: string): Promise<void>
   clearSessions(): Promise<void>
   sync?: SyncControl
+  programs?: ProgramControl
 }
 
 export const sessionId = (date: string, dayId: DayId) => `${date}:${dayId}`

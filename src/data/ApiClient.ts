@@ -1,4 +1,5 @@
 import { checkProgram, SessionSchema, type Program, type Session } from '../../shared/schema'
+import type { ProgramVersionInfo } from './WorkoutRepository'
 
 /** kind: network (no answer / timeout), auth (token refused), http (any other error status). */
 export class ApiError extends Error {
@@ -6,6 +7,8 @@ export class ApiError extends Error {
     readonly kind: 'network' | 'auth' | 'http',
     message: string,
     readonly status?: number,
+    /** Specific problems the server listed (for example why a program was refused). */
+    readonly details: string[] = [],
   ) {
     super(message)
   }
@@ -51,7 +54,7 @@ export class ApiClient {
     const isJson = (res.headers.get('content-type') ?? '').includes('application/json')
     if (!isJson) throw new ApiError(res.status >= 500 || res.ok ? 'network' : 'http', `Unexpected reply (${res.status})`, res.status)
     const data = (await res.json().catch(() => null)) as { error?: string; details?: string[] } | null
-    if (!res.ok) throw new ApiError('http', data?.error ?? `Server error ${res.status}`, res.status)
+    if (!res.ok) throw new ApiError('http', data?.error ?? `Server error ${res.status}`, res.status, data?.details ?? [])
     return data
   }
 
@@ -75,5 +78,26 @@ export class ApiClient {
     const r = (await this.call('GET', '/api/program')) as { version: number; program: unknown } | null
     const check = checkProgram(r?.program)
     return r && check.ok ? { version: r.version, program: check.program } : null
+  }
+
+  async listProgramVersions(): Promise<ProgramVersionInfo[]> {
+    const r = (await this.call('GET', '/api/program/versions')) as { versions: ProgramVersionInfo[] }
+    return r.versions
+  }
+
+  async getProgramVersion(version: number): Promise<Program> {
+    const r = (await this.call('GET', `/api/program/${version}`)) as { program: unknown }
+    const check = checkProgram(r.program)
+    if (!check.ok) throw new ApiError('http', `Version ${version} is damaged: ${check.errors[0]}`)
+    return check.program
+  }
+
+  async putProgram(program: Program, source: 'ai' | 'manual', note?: string): Promise<number> {
+    const r = (await this.call('PUT', '/api/program', { program, source, note })) as { version: number }
+    return r.version
+  }
+
+  async activateProgram(version: number): Promise<void> {
+    await this.call('POST', `/api/program/${version}/activate`, {})
   }
 }
