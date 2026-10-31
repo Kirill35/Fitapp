@@ -122,7 +122,7 @@ wrangler.toml
 | 3. `SyncedRepository` + header dot ✅ | Log with airplane mode on, reconnect, data appears on a second browser (`scripts/e2e-sync.mjs`) |
 | 4. Deploy to Cloudflare ✅ | Installed PWA on your phone, working offline, token set |
 | 5. Import program + diff + versions ✅ | Paste an AI-generated program, review the diff, activate, roll back |
-| 6. Corrections editor | Change a start weight or video link, new version appears |
+| 6. Corrections editor (dropped: not needed, corrections go through the AI flow) | Change a start weight or video link, new version appears |
 
 Steps 1–3 and 5–6 I can build and test here. **Step 4 needs your Cloudflare account**: either you run `npx wrangler deploy` after `wrangler login`, or you add an API token to this session's environment secrets and I run it.
 
@@ -132,3 +132,10 @@ Web app (installed PWA) · Cloudflare + D1 · program stays JSON, versioned and 
 ## Open
 - AI generation v1 outside the app (paste flow) vs v2 inside the app from day one. Recommended: v1 first.
 - Whether corrections should also be possible by voice later ("make deadlift start 115").
+
+## Status
+Steps 1 to 5 are built, deployed and in use. Step 6 was dropped. Known gaps, none urgent:
+- Past workouts open against the current program, not the version they were logged under (`program_version` is already recorded).
+- Changing the program needs a connection (it is saved on the server).
+- Voice recognises exercises by name and by the `aliases` in the program; new exercises from an AI need aliases to be speakable.
+- No automatic backups beyond D1 Time Travel and the Export button.
